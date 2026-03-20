@@ -11,6 +11,7 @@ import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
 import '../routines/routines_provider.dart';
 import 'workout_provider.dart';
+import 'immersive_workout_screen.dart';
 
 class WorkoutScreen extends StatelessWidget {
   const WorkoutScreen({super.key});
@@ -155,7 +156,7 @@ class _IdleView extends StatelessWidget {
   void _openFullscreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const _FullscreenWorkoutPage(),
+        builder: (_) => const ImmersiveWorkoutPage(),
       ),
     );
   }
