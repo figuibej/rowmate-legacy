@@ -1,0 +1,20 @@
+workflows:
+  ios-unsigned:
+    name: iOS sin firmar para sideload
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Build sin firmar
+        script: flutter build ios --release --no-codesign
+      - name: Empaquetar .ipa
+        script: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -r app.ipa Payload
+    artifacts:
+      - build/ios/iphoneos/app.ipa
