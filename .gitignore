@@ -46,3 +46,5 @@ app.*.map.json
 
 # Strava credentials
 lib/core/strava/strava_secrets.dart
+
+install_ipad.sh
