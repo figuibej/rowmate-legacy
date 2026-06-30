@@ -2,40 +2,42 @@ name: Build iOS App
 
 on:
   push:
-    branches: [ "main", "master" ] # Se ejecuta automáticamente si subís código a estas ramas
-  workflow_dispatch: # Te agrega un botón en GitHub para correrlo manualmente cuando quieras
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-    # 1. Descarga tu código en la máquina virtual de macOS
     - name: Checkout del código
       uses: actions/checkout@v4
 
-    # 2. Instala Flutter
     - name: Instalar Flutter
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
 
-    # 3. Descarga las dependencias de tu proyecto
     - name: Instalar dependencias
       run: flutter pub get
 
-    # 4. Compila para iOS ignorando el error de los certificados de Apple
+    # --- NUEVO PASO PARA CREAR EL ARCHIVO SECRETO ---
+    - name: Crear archivo strava_secrets.dart
+      run: |
+        mkdir -p lib/core/strava
+        echo "const String stravaClientId = '${{ secrets.STRAVA_CLIENT_ID }}';" > lib/core/strava/strava_secrets.dart
+        echo "const String stravaClientSecret = '${{ secrets.STRAVA_CLIENT_SECRET }}';" >> lib/core/strava/strava_secrets.dart
+    # --------------------------------------------------
+
     - name: Compilar iOS (sin firma)
       run: flutter build ios --release --no-codesign
 
-    # 5. Convierte el resultado en un archivo instalable (.ipa)
     - name: Empaquetar a .ipa
       run: |
         mkdir Payload
         mv build/ios/iphoneos/Runner.app Payload/
         zip -r RowMate.ipa Payload
 
-    # 6. Sube el archivo final para que lo puedas descargar a tu PC
     - name: Subir el .ipa para descargar
       uses: actions/upload-artifact@v4
       with:
