@@ -40,8 +40,15 @@ class SeriesTracker {
   static const lapMeters = 500;
   static const maxPreviousReps = 3;
 
-  // Última lectura
-  double _lastDistance = 0;
+  /// El mejor remero del mundo ronda los 6,5 m/s; más que esto en una sola
+  /// lectura es una falla: paquete sin distancia, reinicio del monitor o remar
+  /// en pausa.
+  static const maxSpeedMetersPerSecond = 10.0;
+
+  // Última lectura. _distance es la distancia saneada (relativa al inicio);
+  // _lastRawDistance es el último valor crudo del monitor.
+  double _lastRawDistance = 0;
+  double _distance = 0;
   double _lastTime = 0;
 
   int? _stepIndex;
@@ -64,7 +71,7 @@ class SeriesTracker {
 
   /// Metros recorridos en la vuelta en curso (0 fuera de pasos de trabajo).
   int get currentLapMeters => _isWork
-      ? ((_lastDistance - _stepStartDistance) - _laps.length * lapMeters).floor()
+      ? ((_distance - _stepStartDistance) - _laps.length * lapMeters).floor()
       : 0;
 
   /// Segundos de la vuelta en curso (0 fuera de pasos de trabajo).
@@ -73,23 +80,31 @@ class SeriesTracker {
   bool get inSeries => _position?.groupId != null;
   int get rep => _position?.rep ?? 0;
   int get repCount => _position?.repCount ?? 0;
-  int get repMeters => (_lastDistance - _repStartDistance).floor();
+  int get repMeters => (_distance - _repStartDistance).floor();
   List<RepSummary> get previousReps => List.unmodifiable(_previousReps);
 
   /// Reinicia todo. [distanceMeters] es la distancia del monitor al iniciar.
-  void begin(int distanceMeters) {
-    _lastDistance = distanceMeters.toDouble();
-    _lastTime = 0;
+  /// [elapsedSeconds] es el reloj activo en ese momento.
+  void begin(int distanceMeters, {int elapsedSeconds = 0}) {
+    _lastRawDistance = distanceMeters.toDouble();
+    _distance = 0;
+    _lastTime = elapsedSeconds.toDouble();
     _stepIndex = null;
     _position = null;
     _isWork = false;
-    _stepStartDistance = _lastDistance;
-    _lastLapEndTime = 0;
+    _stepStartDistance = _distance;
+    _lastLapEndTime = _lastTime;
     _laps.clear();
-    _repStartDistance = _lastDistance;
+    _repStartDistance = _distance;
     _repWorkMeters = 0;
     _repWorkSeconds = 0;
     _previousReps.clear();
+  }
+
+  /// Fija la distancia cruda de referencia sin contar ningún salto. Llamar al
+  /// reanudar tras una pausa.
+  void rebase(int distanceMeters) {
+    _lastRawDistance = distanceMeters.toDouble();
   }
 
   /// Registra una lectura del paso [stepIndex].
@@ -102,10 +117,14 @@ class SeriesTracker {
   }) {
     if (stepIndex != _stepIndex) _enterStep(stepIndex, step, position);
 
-    final d = distanceMeters.toDouble();
     final t = elapsedSeconds.toDouble();
-    final dd = d - _lastDistance;
     final dt = t - _lastTime;
+    final rawDelta = distanceMeters - _lastRawDistance;
+    final maxDelta = maxSpeedMetersPerSecond * (dt < 1 ? 1 : dt);
+    // Discontinuidad: no cuenta metros pero el tiempo sigue avanzando
+    final dd = (rawDelta < 0 || rawDelta > maxDelta) ? 0.0 : rawDelta;
+    final d = _distance + dd;
+    _lastRawDistance = distanceMeters.toDouble();
 
     if (_isWork) {
       if (dd > 0) _repWorkMeters += dd;
@@ -115,13 +134,13 @@ class SeriesTracker {
         final target = _stepStartDistance + (_laps.length + 1) * lapMeters;
         // Interpolación lineal del instante en que se cruzó la marca
         final crossTime =
-            dd > 0 ? _lastTime + (target - _lastDistance) / dd * dt : t;
+            dd > 0 ? _lastTime + (target - _distance) / dd * dt : t;
         _laps.add(Lap(_laps.length + 1, crossTime - _lastLapEndTime));
         _lastLapEndTime = crossTime;
       }
     }
 
-    _lastDistance = d;
+    _distance = d;
     _lastTime = t;
   }
 
@@ -139,7 +158,7 @@ class SeriesTracker {
           0,
           RepSummary(
             rep: prev.rep,
-            totalMeters: (_lastDistance - _repStartDistance).floor(),
+            totalMeters: (_distance - _repStartDistance).floor(),
             workMeters: _repWorkMeters.floor(),
             workSeconds: _repWorkSeconds,
           ),
@@ -149,7 +168,7 @@ class SeriesTracker {
         // La comparación es dentro de la serie en curso
         _previousReps.clear();
       }
-      _repStartDistance = _lastDistance;
+      _repStartDistance = _distance;
       _repWorkMeters = 0;
       _repWorkSeconds = 0;
     }
@@ -157,7 +176,7 @@ class SeriesTracker {
     _stepIndex = stepIndex;
     _position = position;
     _isWork = step.type == StepType.work;
-    _stepStartDistance = _lastDistance;
+    _stepStartDistance = _distance;
     _lastLapEndTime = _lastTime;
     _laps.clear();
   }

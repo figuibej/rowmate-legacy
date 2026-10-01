@@ -42,6 +42,7 @@ class _Feeder {
 }
 
 void main() {
+  _hardening();
   test('interpola el tiempo de la vuelta entre lecturas', () {
     final f = _Feeder(SeriesTracker());
     // 3 m/s: 498 m en t=166 y 501 m en t=167 → cruza 500 m en 166.67 s
@@ -125,5 +126,96 @@ void main() {
   test('una repetición sin metros de trabajo no tiene split', () {
     const r = RepSummary(rep: 1, totalMeters: 100, workMeters: 0, workSeconds: 0);
     expect(r.workSplitSeconds, isNull);
+  });
+}
+
+/// Alimenta lecturas crudas del monitor de a 1 s (para simular fallas).
+class _Raw {
+  _Raw(this.tracker, this.step, this.pos, {int startRaw = 0}) {
+    tracker.begin(startRaw);
+  }
+  final SeriesTracker tracker;
+  final IntervalStep step;
+  StepPosition pos;
+  int t = 0;
+
+  void feed(int raw, {int stepIndex = 0}) {
+    t++;
+    tracker.update(
+      stepIndex: stepIndex,
+      step: step,
+      position: pos,
+      distanceMeters: raw,
+      elapsedSeconds: t,
+    );
+  }
+}
+
+void _hardening() {
+  test('una lectura de 0 dentro del paso no genera metros negativos ni dobles', () {
+    final r = _Raw(SeriesTracker(), _work(2000), _pos(1));
+    for (var i = 1; i <= 250; i++) {
+      r.feed(i * 4);
+      expect(r.tracker.currentLapMeters, greaterThanOrEqualTo(0));
+      expect(r.tracker.repMeters, greaterThanOrEqualTo(0));
+    }
+    r.feed(0);
+    expect(r.tracker.repMeters, greaterThanOrEqualTo(0));
+    for (var raw = 1004; raw <= 1100; raw += 4) {
+      r.feed(raw);
+      expect(r.tracker.currentLapMeters, greaterThanOrEqualTo(0));
+      expect(r.tracker.repMeters, greaterThanOrEqualTo(0));
+    }
+    final laps = r.tracker.laps;
+    expect(laps, hasLength(2));
+    for (final l in laps) {
+      expect(l.seconds, closeTo(125, 2));
+    }
+    r.pos = _pos(2);
+    r.feed(1104, stepIndex: 1);
+    final s = r.tracker.previousReps.first;
+    expect(s.workMeters, inInclusiveRange(1060, 1110));
+  });
+
+  test('un primer salto desde 0 no crea vueltas falsas', () {
+    final r = _Raw(SeriesTracker(), _work(2000), _pos(1));
+    r.feed(5000);
+    expect(r.tracker.laps, isEmpty);
+    for (var i = 1; i <= 140; i++) {
+      r.feed(5000 + i * 4);
+    }
+    expect(r.tracker.laps, hasLength(1));
+    expect(r.tracker.laps.first.seconds, closeTo(125, 2));
+  });
+
+  test('un reinicio del monitor no genera valores negativos', () {
+    final r = _Raw(SeriesTracker(), _work(2000), _pos(1));
+    var prev = 0;
+    void check() {
+      expect(r.tracker.repMeters, greaterThanOrEqualTo(prev));
+      expect(r.tracker.currentLapMeters, greaterThanOrEqualTo(0));
+      prev = r.tracker.repMeters;
+    }
+    for (var i = 1; i <= 200; i++) {
+      r.feed(i * 4);
+      check();
+    }
+    for (var i = 0; i <= 60; i++) {
+      r.feed(i * 4);
+      check();
+    }
+    expect(r.tracker.laps, isNotEmpty);
+    expect(r.tracker.laps.first.seconds, closeTo(125, 2));
+  });
+
+  test('rebase no cuenta el salto al reanudar', () {
+    final r = _Raw(SeriesTracker(), _work(2000), _pos(1));
+    for (var i = 1; i <= 5; i++) {
+      r.feed(i * 4);
+    }
+    expect(r.tracker.repMeters, 20);
+    r.tracker.rebase(9000);
+    r.feed(9004);
+    expect(r.tracker.repMeters, 24);
   });
 }
