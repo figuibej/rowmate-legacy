@@ -6,6 +6,7 @@ import '../../core/models/interval_step.dart';
 import '../../core/models/routine.dart';
 import '../../core/models/rowing_data.dart';
 import '../../core/strava/strava_config.dart';
+import '../../core/dev/dev_config.dart';
 import '../../shared/theme.dart';
 import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
@@ -431,6 +432,7 @@ class _FullscreenWorkoutPageState extends State<_FullscreenWorkoutPage> {
   }
 
   void _triggerStravaUpload(BuildContext context, WorkoutProvider w) {
+    if (kSimulator) return; // en modo simulador no se sube nada a Strava
     final profile = context.read<ProfileProvider>();
     final sessionId = w.lastFinishedSessionId;
     if (!profile.isConnected || sessionId == null) return;
@@ -541,6 +543,7 @@ class _CompactTopBar extends StatelessWidget {
   }
 
   void _triggerStravaUpload(BuildContext context, WorkoutProvider w, AppLocalizations l10n) {
+    if (kSimulator) return; // en modo simulador no se sube nada a Strava
     final profile = context.read<ProfileProvider>();
     final sessionId = w.lastFinishedSessionId;
     if (!profile.isConnected || sessionId == null) return;
