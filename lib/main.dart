@@ -8,7 +8,10 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'core/bluetooth/ble_service.dart';
+import 'core/bluetooth/simulated_ble_service.dart';
 import 'core/database/database_service.dart';
+import 'core/dev/dev_config.dart';
+import 'core/dev/simulator_overlay.dart';
 import 'core/strava/strava_config.dart';
 import 'core/strava/strava_auth_service.dart';
 import 'core/strava/strava_api_service.dart';
@@ -40,7 +43,7 @@ class RowerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ble = BleService();
+    final BleService ble = kSimulator ? SimulatedBleService() : BleService();
     final db = DatabaseService();
     final stravaConfigured = StravaConfig.isConfigured;
 
@@ -80,6 +83,9 @@ class RowerApp extends StatelessWidget {
           Locale('es'),
         ],
         home: const MainShell(),
+        builder: kSimulator
+            ? (context, child) => SimulatorOverlay(child: child!)
+            : null,
       ),
     );
   }
