@@ -6,6 +6,7 @@ import 'package:rowmate/l10n/app_localizations.dart';
 import '../../core/models/interval_step.dart';
 import '../../core/models/rowing_data.dart';
 import '../../core/strava/strava_config.dart';
+import '../../core/dev/dev_config.dart';
 import '../../shared/theme.dart';
 import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
@@ -204,6 +205,7 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
   }
 
   void _triggerStravaUpload(BuildContext context, WorkoutProvider w) {
+    if (kSimulator) return; // en modo simulador no se sube nada a Strava
     final profile = context.read<ProfileProvider>();
     final sessionId = w.lastFinishedSessionId;
     if (!profile.isConnected || sessionId == null) return;
@@ -250,8 +252,10 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
 
   void _showCompletionDialog(BuildContext context, WorkoutProvider w) async {
     final l10n = AppLocalizations.of(context)!;
-    final profile =
-        StravaConfig.isConfigured ? context.read<ProfileProvider>() : null;
+    // En modo simulador no se sube nada a Strava: sin profile no hay botón ni subida automática
+    final profile = StravaConfig.isConfigured && !kSimulator
+        ? context.read<ProfileProvider>()
+        : null;
     final shouldAskStrava = StravaConfig.isConfigured &&
         profile != null &&
         profile.isConnected &&
