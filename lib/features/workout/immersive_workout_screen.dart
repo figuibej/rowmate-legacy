@@ -10,6 +10,7 @@ import '../../core/dev/dev_config.dart';
 import '../../shared/theme.dart';
 import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
+import 'series_panels.dart';
 import 'workout_provider.dart';
 
 // ─── Entry point ──────────────────────────────────────────────────────────
@@ -161,8 +162,21 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
             ),
 
             // ── 4. HUD overlay ─────────────────────────────────────
-            _ImmersiveHUD(data: w.data, elapsedSeconds: w.totalElapsedSeconds,
-                currentStep: sp?.step),
+            _ImmersiveHUD(
+              data: w.data,
+              elapsedSeconds: w.totalElapsedSeconds,
+              currentStep: sp?.step,
+              // Parciales y series: solo en rutinas, colapsables
+              belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
+            ),
+
+            // ── 4b. Hora actual ────────────────────────────────────
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 90,
+              left: 0,
+              right: 0,
+              child: const Center(child: WallClock()),
+            ),
 
             // ── 5. Controls ────────────────────────────────────────
             Positioned(
@@ -1049,11 +1063,13 @@ class _ImmersiveHUD extends StatelessWidget {
   final RowingData data;
   final int elapsedSeconds;
   final IntervalStep? currentStep;
+  final Widget? belowSpm;
 
   const _ImmersiveHUD({
     required this.data,
     required this.elapsedSeconds,
     required this.currentStep,
+    this.belowSpm,
   });
 
   String get _timeFormatted {
@@ -1097,12 +1113,21 @@ class _ImmersiveHUD extends StatelessWidget {
         Positioned(
           top: MediaQuery.of(context).padding.top + 90,
           left: 14,
-          child: _GlassMetricCard(
-            label: 'SPM',
-            value: data.strokeRate.toStringAsFixed(1),
-            color: spmColor,
-            size: _MetricSize.large,
-            hasTarget: hasSpmTarget,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _GlassMetricCard(
+                label: 'SPM',
+                value: data.strokeRate.toStringAsFixed(1),
+                color: spmColor,
+                size: _MetricSize.large,
+                hasTarget: hasSpmTarget,
+              ),
+              if (belowSpm != null) ...[
+                const SizedBox(height: 10),
+                belowSpm!,
+              ],
+            ],
           ),
         ),
 
