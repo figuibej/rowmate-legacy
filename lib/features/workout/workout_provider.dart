@@ -6,6 +6,7 @@ import '../../core/models/rowing_data.dart';
 import '../../core/models/routine.dart';
 import '../../core/models/interval_step.dart';
 import '../../core/models/workout_session.dart';
+import 'series_tracker.dart';
 
 enum WorkoutPhase { idle, active, paused, finished }
 
@@ -50,6 +51,10 @@ class WorkoutProvider extends ChangeNotifier {
   int _totalElapsedSeconds = 0;
   int _distanceAtStepStart = 0;
 
+  // Parciales de 500 m y repeticiones de la serie (solo en memoria)
+  final SeriesTracker _series = SeriesTracker();
+  List<StepPosition> _stepPositions = const [];
+
   Timer? _timer;
   StreamSubscription<RowingData>? _dataSub;
 
@@ -70,6 +75,7 @@ class WorkoutProvider extends ChangeNotifier {
   WorkoutPhase get phase => _phase;
   RowingData get data => _data;
   int get totalElapsedSeconds => _totalElapsedSeconds;
+  SeriesTracker get series => _series;
   Routine? get routine => _routine;
   bool get isActive => _phase == WorkoutPhase.active;
   bool get isPaused => _phase == WorkoutPhase.paused;
@@ -104,6 +110,8 @@ class WorkoutProvider extends ChangeNotifier {
     _currentStepIndex = 0;
     _stepElapsedSeconds = 0;
     _distanceAtStepStart = _data.distanceMeters;
+    _stepPositions = routine.flattenedStepPositions;
+    _series.begin(_data.distanceMeters, elapsedSeconds: _totalElapsedSeconds);
     await _begin(routine);  // usa routine original para el nombre/id
   }
 
@@ -151,6 +159,14 @@ class WorkoutProvider extends ChangeNotifier {
 
     // Avanza al siguiente paso si se cumplió el objetivo
     if (_routine != null) {
+      // Antes de avanzar: esta lectura pertenece al paso actual
+      _series.update(
+        stepIndex: _currentStepIndex,
+        step: _routine!.steps[_currentStepIndex],
+        position: _stepPositions[_currentStepIndex],
+        distanceMeters: _data.distanceMeters,
+        elapsedSeconds: _totalElapsedSeconds,
+      );
       _checkStepCompletion();
     }
 
@@ -198,6 +214,7 @@ class WorkoutProvider extends ChangeNotifier {
   void resume() {
     _phase = WorkoutPhase.active;
     _timer = Timer.periodic(const Duration(seconds: 1), _tick);
+    _series.rebase(_data.distanceMeters); // lo remado en pausa no cuenta para parciales
     notifyListeners();
   }
 
@@ -263,6 +280,8 @@ class WorkoutProvider extends ChangeNotifier {
     _sessionId = null;
     _startedAt = null;
     _dataBuffer.clear();
+    _stepPositions = const [];
+    _series.begin(0);
     notifyListeners();
   }
 
