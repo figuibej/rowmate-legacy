@@ -15,17 +15,11 @@ Poder levantar la app sin un remo conectado y simular una sesión realista, para
 
 `SimulatedBleService implements BleService` (la interfaz implícita de la clase). En `main.dart`, cuando `kSimulator` es `true` se instancia el simulador en lugar de `BleService()`. Los providers (`DeviceProvider`, `WorkoutProvider`) y las pantallas no cambian, porque siguen recibiendo un `BleService`.
 
-El simulador también se registra con su tipo concreto (`Provider<SimulatedBleService>`) para que el panel de control pueda acceder a sus controles.
+El panel accede a los controles con `context.read<BleService>() as SimulatedBleService`. No se registra un provider aparte, porque en un hot reload `RowerApp` crea una instancia nueva y el panel quedaría controlando una distinta de la que emite los datos.
 
-## SimulatedBleService
+La física del remo vive en una clase pura, `RowingSimulator` (`lib/core/dev/rowing_simulator.dart`), con un método `tick()` que avanza 1 s y devuelve un `RowingData`. Se puede testear sin timers. `SimulatedBleService` solo la ejecuta con un `Timer`.
 
-Archivo: `lib/core/bluetooth/simulated_ble_service.dart`.
-
-**Estado inicial:** `status = connected`, `connectedDeviceName = 'Remo simulado'`, adaptador en `on`.
-
-**Escaneo:** `startScan` y `stopScan` no hacen nada y `devicesStream` emite una lista vacía. `connect(device)` no se usa.
-
-**Datos:** un `Timer` de 1 s emite un `RowingData` en `dataStream` a partir de los parámetros actuales:
+## RowingSimulator
 
 | Campo | Cálculo |
 |---|---|
@@ -33,30 +27,43 @@ Archivo: `lib/core/bluetooth/simulated_ble_service.dart`.
 | `strokeRate` | SPM objetivo ± 1 de ruido |
 | `pace500mSeconds` | Fórmula de Concept2: `500 * (2.80 / watts)^(1/3)` |
 | `distanceMeters` | Se acumula `500 / pace` metros por segundo |
-| `strokeCount` | Se acumula `spm / 60` remadas por segundo, redondeado |
-| `totalCalories` | Se acumula `watts * 4 / 4184 + 0.35` kcal por segundo (aproximación de Concept2) |
-| `heartRate` | Converge suavemente hacia `90 + watts * 0.35`, con tope de 190 |
-| `elapsedSeconds` | Segundos desde el inicio mientras se rema |
+| `strokeCount` | Se acumula `spm / 60` remadas por segundo, redondeado hacia abajo |
+| `totalCalories` | Se acumula `(watts * 4 * 0.8604 + 300) / 3600` kcal por segundo (fórmula de Concept2) |
+| `heartRate` | Converge un 10 % por segundo hacia `90 + watts * 0.35` (tope 190) mientras se rema, y hacia 70 en reposo |
+| `elapsedSeconds` | Segundos remados |
 
-**Controles públicos:**
+**Controles:**
 - `targetWatts`: 30–500, por defecto 150.
 - `targetSpm`: 14–40, por defecto 24.
-- `rowing`: con `false` se emiten SPM, watts y pace en 0; distancia, remadas y tiempo quedan congelados y el pulso baja.
-- `simulateDisconnect()`: emite `disconnected` y, a los 3 s, `connected` otra vez, igual que la auto-reconexión real.
-- Presets: Suave (100 W / 20 spm), Medio (180 W / 24 spm), Fuerte (280 W / 30 spm).
+- `rowing`: por defecto `true`. Con `false`, SPM, watts y pace valen 0; distancia, remadas, calorías y tiempo quedan congelados y el pulso baja.
 
-**Streams de solo depuración:** `rawBytesStream` no emite nada.
+El ruido se puede desactivar (`noise: false`) para los tests.
+
+## SimulatedBleService
+
+Archivo: `lib/core/bluetooth/simulated_ble_service.dart`.
+
+**Estado inicial:** `DeviceProvider` no lee `status` al crearse, solo escucha `statusStream`. Por eso el simulador emite `connected` en un microtask cuando aparece el primer listener de `statusStream`, y `BluetoothAdapterState.on` cuando aparece el primero de `adapterStateStream`. Una vez conectado, `connectedDeviceName` es `'Remo simulado'`.
+
+**Datos:** mientras está conectado, un `Timer` de 1 s emite `simulator.tick()` en `dataStream`.
+
+**Escaneo y conexión:**
+- `devicesStream` y `rawBytesStream` no emiten nada.
+- `startScan` reconecta el remo simulado si está desconectado. Así el botón "Buscar" sirve para volver después de una desconexión manual.
+- `stopScan` no hace nada. `connect(device)` también reconecta.
+- `disconnect()` detiene los datos y emite `disconnected` sin reconectar.
+- `simulateDisconnect()` emite `disconnected` y, a los 3 s, `connected` otra vez, igual que la auto-reconexión real.
 
 ## Panel de control
 
-Archivo: `lib/core/dev/simulator_panel.dart`. Se monta en `MainShell` solo si `kSimulator` es `true`.
+Archivo: `lib/core/dev/simulator_overlay.dart`. Se monta con `MaterialApp.builder` solo si `kSimulator` es `true`, para que quede por encima de todas las rutas, incluida la de entrenamiento en pantalla completa. Como ese lugar está fuera del `Navigator`, no hay `Overlay`: el panel no usa bottom sheets, tooltips ni sliders.
 
-- Un `FloatingActionButton` pequeño (icono `build`) abre un `ModalBottomSheet` con:
-  - presets de intensidad;
-  - sliders de watts y SPM;
+- Un `FloatingActionButton.small` (icono `build`) despliega una tarjeta inline con:
+  - presets de intensidad (`ActionChip`): Suave (100 W / 20 spm), Medio (180 W / 24 spm), Fuerte (280 W / 30 spm);
+  - botones − / + para watts (de a 10) y SPM (de a 1);
   - un switch "Remando";
   - un botón "Simular desconexión".
-- Una cinta "SIMULADOR" en la esquina superior indica que no hay un remo real.
+- Una cinta `Banner` con el texto "SIMULADOR" en la esquina superior izquierda indica que no hay un remo real.
 
 ## Datos
 
@@ -70,12 +77,18 @@ Archivo: `lib/core/dev/simulator_panel.dart`. Se monta en `MainShell` solo si `k
 
 - Acelerar el tiempo para probar rutinas largas. Requeriría tocar el reloj de `WorkoutProvider`.
 - Generar bytes FTMS crudos o probar `FtmsParser`.
-- Simular el flujo de escaneo y conexión.
+- Simular el flujo de escaneo con una lista de dispositivos.
 
 ## Tests
 
-`test/simulated_ble_service_test.dart`, usando `fake_async`:
-- Con más watts, el pace es menor (más rápido).
-- La distancia y las remadas crecen con el tiempo mientras se rema.
-- Con `rowing = false`, SPM y watts valen 0 y la distancia no cambia.
-- `simulateDisconnect()` emite `disconnected` y después `connected`.
+- `test/rowing_simulator_test.dart`:
+  - con más watts, el pace es menor (más rápido);
+  - 203 W equivalen a un pace de unos 2:00;
+  - la distancia, las remadas y el tiempo crecen mientras se rema;
+  - con `rowing = false`, SPM y watts valen 0 y la distancia no cambia.
+- `test/simulated_ble_service_test.dart` (con `fake_async`):
+  - emite `connected` al primer listener y datos cada segundo;
+  - `simulateDisconnect()` emite `disconnected` y después `connected`;
+  - `startScan()` reconecta después de un `disconnect()`.
+- `test/simulator_overlay_test.dart`:
+  - el panel se abre y el botón + de watts sube el objetivo, sin errores por falta de `Overlay`.
