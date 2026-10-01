@@ -14,6 +14,9 @@ flutter run
 # Run on Windows desktop
 flutter run -d windows
 
+# Run with simulated rower (dev mode: separate DB, Strava uploads blocked)
+flutter run -d windows --dart-define=SIMULATOR=true
+
 # List available devices
 flutter devices
 
