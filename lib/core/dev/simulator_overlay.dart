@@ -69,11 +69,21 @@ class _SimulatorPanelState extends State<_SimulatorPanel> {
   @override
   Widget build(BuildContext context) {
     final sim = _ble.simulator;
+    // Altura acotada + scroll: en ventanas bajas (landscape, ventana chica)
+    // el panel no debe pasarse del borde superior y tapar el botón de cerrar.
+    final maxHeight = MediaQuery.sizeOf(context).height -
+        96 -
+        MediaQuery.paddingOf(context).top -
+        16;
     return Card(
       elevation: 8,
-      child: SizedBox(
-        width: 280,
-        child: Padding(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: 280,
+          maxWidth: 280,
+          maxHeight: maxHeight < 120 ? 120 : maxHeight,
+        ),
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
