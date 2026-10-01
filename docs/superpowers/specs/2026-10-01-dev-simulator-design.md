@@ -61,7 +61,10 @@ Archivo: `lib/core/dev/simulator_panel.dart`. Se monta en `MainShell` solo si `k
 ## Datos
 
 - `DatabaseService` usa `rower_app_dev.db` cuando `kSimulator` es `true` y `rower_app.db` en caso contrario.
-- Cuando `kSimulator` es `true`, una preferencia de subida `UploadPreference.auto` se trata como `ask` en los dos `_triggerStravaUpload` de `lib/features/workout/workout_screen.dart`. Así nunca se sube a Strava una sesión simulada sin confirmación. La subida manual desde el historial sigue disponible.
+- **En modo simulador no se sube nada a Strava.**
+  - Bloqueo central: `StravaApiService.uploadActivity` retorna `null` sin hacer ningún request cuando `kSimulator` es `true` (y lo registra con `debugPrint`). Todos los caminos de subida pasan por ahí: la subida de una sesión, la sincronización en lote y la subida manual desde el historial o el perfil. Esos caminos ya tratan `null` como un fallo.
+  - UI: los dos `_triggerStravaUpload` de `lib/features/workout/workout_screen.dart` retornan de inmediato cuando `kSimulator` es `true`. Así, al terminar una sesión simulada no aparece ni el snackbar ni el diálogo de subida.
+  - La lectura desde Strava (login y descarga de actividades) no se toca.
 
 ## Fuera de alcance
 
