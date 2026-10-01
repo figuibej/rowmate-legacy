@@ -301,7 +301,8 @@ class _FullscreenWorkoutPageState extends State<_FullscreenWorkoutPage> {
 
   void _showWorkoutCompletedDialog(BuildContext context, WorkoutProvider w) async {
     final l10n = AppLocalizations.of(context)!;
-    final profile = StravaConfig.isConfigured ? context.read<ProfileProvider>() : null;
+    // En modo simulador no se sube nada a Strava: sin profile no hay botón ni subida automática
+    final profile = StravaConfig.isConfigured && !kSimulator ? context.read<ProfileProvider>() : null;
     final shouldAskStrava = StravaConfig.isConfigured &&
                            profile != null &&
                            profile.isConnected &&
