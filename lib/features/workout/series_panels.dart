@@ -36,8 +36,11 @@ const _textStyle = TextStyle(
 const _mutedStyle = TextStyle(color: Colors.white54, fontSize: 12);
 
 /// Hora actual (HH:mm). Tiene su propio timer: sigue andando en pausa.
+/// [framed] = false para usarla dentro de una barra que ya tiene fondo.
 class WallClock extends StatefulWidget {
-  const WallClock({super.key});
+  const WallClock({super.key, this.framed = true});
+
+  final bool framed;
 
   @override
   State<WallClock> createState() => _WallClockState();
@@ -50,8 +53,13 @@ class _WallClockState extends State<WallClock> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(
-        const Duration(seconds: 1), (_) => setState(() => _now = DateTime.now()));
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final now = DateTime.now();
+      // Solo redibujar cuando cambia el minuto mostrado
+      if (now.minute != _now.minute || now.hour != _now.hour) {
+        setState(() => _now = now);
+      }
+    });
   }
 
   @override
@@ -62,20 +70,22 @@ class _WallClockState extends State<WallClock> {
 
   @override
   Widget build(BuildContext context) {
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.schedule, size: 14, color: Colors.white70),
+        const SizedBox(width: 5),
+        Text(
+          DateFormat('HH:mm').format(_now),
+          style: _textStyle.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+    if (!widget.framed) return content;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: _glass(),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.schedule, size: 14, color: Colors.white70),
-          const SizedBox(width: 5),
-          Text(
-            DateFormat('HH:mm').format(_now),
-            style: _textStyle.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 }
@@ -97,6 +107,9 @@ class SeriesPanels extends StatefulWidget {
 class _SeriesPanelsState extends State<SeriesPanels> {
   bool _lapsExpanded = false;
   bool _repsExpanded = false;
+  // Si el usuario tocó antes de que termine _load, su elección gana
+  bool _lapsTouched = false;
+  bool _repsTouched = false;
 
   @override
   void initState() {
@@ -108,8 +121,12 @@ class _SeriesPanelsState extends State<SeriesPanels> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _lapsExpanded = prefs.getBool(SeriesPanels.lapsKey) ?? false;
-      _repsExpanded = prefs.getBool(SeriesPanels.repsKey) ?? false;
+      if (!_lapsTouched) {
+        _lapsExpanded = prefs.getBool(SeriesPanels.lapsKey) ?? false;
+      }
+      if (!_repsTouched) {
+        _repsExpanded = prefs.getBool(SeriesPanels.repsKey) ?? false;
+      }
     });
   }
 
@@ -131,6 +148,7 @@ class _SeriesPanelsState extends State<SeriesPanels> {
           title: 'Parciales 500 m',
           expanded: _lapsExpanded,
           onToggle: () {
+            _lapsTouched = true;
             setState(() => _lapsExpanded = !_lapsExpanded);
             _save(SeriesPanels.lapsKey, _lapsExpanded);
           },
@@ -144,6 +162,7 @@ class _SeriesPanelsState extends State<SeriesPanels> {
             title: 'Series anteriores',
             expanded: _repsExpanded,
             onToggle: () {
+              _repsTouched = true;
               setState(() => _repsExpanded = !_repsExpanded);
               _save(SeriesPanels.repsKey, _repsExpanded);
             },

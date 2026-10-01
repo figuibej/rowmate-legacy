@@ -170,14 +170,6 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
               belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
             ),
 
-            // ── 4b. Hora actual ────────────────────────────────────
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 90,
-              left: 0,
-              right: 0,
-              child: const Center(child: WallClock()),
-            ),
-
             // ── 5. Controls ────────────────────────────────────────
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 16,
@@ -847,18 +839,23 @@ class _StageTimelineBarState extends State<_StageTimelineBar>
                 ),
                 if (sp.step.targetLabel.isNotEmpty) ...[
                   const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: stepColor(sp.step.type.name).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      sp.step.targetLabel,
-                      style: TextStyle(
-                          color: stepColor(sp.step.type.name),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
+                  // Flexible: en pantallas angostas el objetivo se recorta con "…"
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: stepColor(sp.step.type.name).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        sp.step.targetLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            color: stepColor(sp.step.type.name),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
@@ -918,6 +915,9 @@ class _StageTimelineBarState extends State<_StageTimelineBar>
                     );
                   },
                 ),
+                // Hora actual
+                const SizedBox(width: 10),
+                const WallClock(framed: false),
               ],
             ),
           ),
@@ -1020,6 +1020,8 @@ class _FreeWorkoutTopBar extends StatelessWidget {
                 color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
+          const WallClock(framed: false),
+          const SizedBox(width: 10),
           _PhaseChip(phase: w.phase),
         ],
       ),
@@ -1113,7 +1115,14 @@ class _ImmersiveHUD extends StatelessWidget {
         Positioned(
           top: MediaQuery.of(context).padding.top + 90,
           left: 14,
+          // Altura acotada para los paneles: en vertical, por encima de la
+          // banda central; en horizontal (no se cruzan), hasta el borde inferior.
+          bottom: MediaQuery.of(context).padding.bottom +
+              (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
+                  ? 16
+                  : 200),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _GlassMetricCard(
@@ -1125,7 +1134,7 @@ class _ImmersiveHUD extends StatelessWidget {
               ),
               if (belowSpm != null) ...[
                 const SizedBox(height: 10),
-                belowSpm!,
+                Flexible(child: SingleChildScrollView(child: belowSpm!)),
               ],
             ],
           ),
