@@ -13,7 +13,7 @@ dependencies:
     sdk: flutter
 
   # Bluetooth BLE
-  flutter_blue_plus: ^1.31.15
+  flutter_blue_plus: 2.3.13
 
   # Base de datos
   sqflite: ^2.3.3+1
@@ -34,6 +34,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   http: ^1.2.0
   shared_preferences: ^2.2.2
+  sqflite_common_ffi: ^2.4.3
 
 dev_dependencies:
   flutter_test:
