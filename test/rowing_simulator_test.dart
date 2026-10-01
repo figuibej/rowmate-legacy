@@ -47,7 +47,8 @@ void main() {
       expect(after.distanceMeters, before.distanceMeters);
       expect(after.strokeCount, before.strokeCount);
       expect(after.elapsedSeconds, before.elapsedSeconds);
-      expect(after.heartRate, lessThanOrEqualTo(before.heartRate));
+      expect(after.totalCalories, before.totalCalories);
+      expect(after.heartRate, lessThan(before.heartRate));
     });
 
     test('los objetivos se limitan a su rango', () {
