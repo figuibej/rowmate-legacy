@@ -113,6 +113,12 @@ class _SessionCard extends StatelessWidget {
                   _Stat(label: 'Watts', value: '${stats.p99Watts}', color: MetricColors.watts),
                   _Stat(label: 'SPM', value: stats.p99Spm.toStringAsFixed(1), color: MetricColors.spm),
                   _Stat(label: 'Split', value: stats.splitFormatted, color: MetricColors.split),
+                  if (stats.hasHeartRate)
+                    _Stat(
+                      label: l10n.historyStatHeartRate,
+                      value: '${stats.avgHeartRate}/${stats.maxHeartRate}',
+                      color: MetricColors.heartRate,
+                    ),
                 ],
               ),
             ],

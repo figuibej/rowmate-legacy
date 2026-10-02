@@ -164,6 +164,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 _StatChip(label: 'Watts', value: '${stats.p99Watts}', color: MetricColors.watts),
                 _StatChip(label: 'SPM', value: stats.p99Spm.toStringAsFixed(1), color: MetricColors.spm),
                 _StatChip(label: 'Split', value: stats.splitFormatted, color: MetricColors.split),
+                if (stats.hasHeartRate)
+                  _StatChip(
+                    label: l10n.historyStatHeartRate,
+                    value: '${stats.avgHeartRate}/${stats.maxHeartRate}',
+                    color: MetricColors.heartRate,
+                  ),
               ],
             ),
           ],
