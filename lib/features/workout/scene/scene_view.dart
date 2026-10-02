@@ -39,14 +39,20 @@ class _SceneViewState extends State<SceneView> with SingleTickerProviderStateMix
   late final Ticker _ticker;
   final SceneState _state = SceneState();
   Duration _last = Duration.zero;
-  ui.FragmentProgram? _program = WaterShader.program;
+
+  // El FragmentShader es de este State: se crea cuando llega el programa y se
+  // libera en dispose (un shader por escena montada, no uno global).
+  ui.FragmentShader? _shader;
 
   @override
   void initState() {
     super.initState();
-    if (_program == null) {
+    final program = WaterShader.program;
+    if (program != null) {
+      _shader = program.fragmentShader();
+    } else {
       WaterShader.load().then((p) {
-        if (mounted && p != null) setState(() => _program = p);
+        if (mounted && p != null) setState(() => _shader = p.fragmentShader());
       });
     }
     _ticker = createTicker(_onTick)..start();
@@ -68,6 +74,7 @@ class _SceneViewState extends State<SceneView> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _ticker.dispose();
+    _shader?.dispose();
     super.dispose();
   }
 
@@ -98,7 +105,7 @@ class _SceneViewState extends State<SceneView> with SingleTickerProviderStateMix
           ),
           CustomPaint(
             painter: WaterPainter(
-              program: _program, camera: cam, state: _state,
+              shader: _shader, camera: cam, state: _state,
               palette: palette, light: light, environment: env,
             ),
           ),

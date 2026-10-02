@@ -122,11 +122,10 @@ class BoatPainter extends CustomPainter {
     final b = camera.project(ox, 0, sternZ + 0.5);
     if (a == null || b == null) return;
     final w = 0.5 * camera.scaleAt(SceneCamera.boatZ);
+    // Óvalo plano (sin blur: evita una pasada offscreen por frame)
     c.drawOval(
       Rect.fromLTRB(math.min(a.dx, b.dx) - w / 2, a.dy, math.max(a.dx, b.dx) + w / 2, b.dy),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.10 * palette.ambient)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      Paint()..color = Colors.black.withValues(alpha: 0.08 * palette.ambient),
     );
   }
 

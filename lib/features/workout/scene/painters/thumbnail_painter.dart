@@ -25,11 +25,16 @@ class ThumbnailPainter extends CustomPainter {
       environment: environment, distance: _distance, time: 0,
     ).paint(canvas, size);
     WaterPainter(
-      program: null, camera: cam, state: SceneState()..distance = _distance,
+      shader: null, camera: cam, state: SceneState()..distance = _distance,
       palette: palette, light: light, environment: environment,
     ).paint(canvas, size);
+    // En miniatura alcanza con los 150 m más cercanos: lo lejano no se distingue
+    final props = environment
+        .visibleProps(_distance)
+        .where((p) => p.z < _distance + 150)
+        .toList();
     ShorePainter(
-      camera: cam, props: environment.visibleProps(_distance), distance: _distance,
+      camera: cam, props: props, distance: _distance,
       palette: palette, time: 0,
     ).paint(canvas, size);
   }

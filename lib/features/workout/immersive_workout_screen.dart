@@ -74,11 +74,15 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage> {
           fit: StackFit.expand,
           children: [
             // ── 1+2. Escena 2.5D: cielo, agua, orilla y bote ───────
-            SceneView(
-              environment: Environment.of(scene.environmentId),
-              data: w.data,
-              isActive: w.phase == WorkoutPhase.active,
-              hourOverride: scene.hourOverride,
+            // RepaintBoundary: la escena repinta cada frame; el HUD no tiene
+            // por qué acompañarla (ni al revés).
+            RepaintBoundary(
+              child: SceneView(
+                environment: Environment.of(scene.environmentId),
+                data: w.data,
+                isActive: w.phase == WorkoutPhase.active,
+                hourOverride: scene.hourOverride,
+              ),
             ),
 
             // ── 3. Stage timeline (top) ────────────────────────────
@@ -91,13 +95,15 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage> {
                   : _FreeWorkoutTopBar(w: w),
             ),
 
-            // ── 4. HUD overlay ─────────────────────────────────────
-            _ImmersiveHUD(
-              data: w.data,
-              elapsedSeconds: w.totalElapsedSeconds,
-              currentStep: sp?.step,
-              // Parciales y series: solo en rutinas, colapsables
-              belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
+            // ── 4. HUD overlay (solo repinta cuando cambian los datos) ──
+            RepaintBoundary(
+              child: _ImmersiveHUD(
+                data: w.data,
+                elapsedSeconds: w.totalElapsedSeconds,
+                currentStep: sp?.step,
+                // Parciales y series: solo en rutinas, colapsables
+                belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
+              ),
             ),
 
             // ── 5. Controls ────────────────────────────────────────
@@ -654,18 +660,21 @@ class _ImmersiveHUD extends StatelessWidget {
             invert: true)
         : MetricColors.split;
 
+    final padding = MediaQuery.of(context).padding;
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height;
+
     return Stack(
       children: [
         // ── Top-left: SPM (biggest metric) ─────────────────────────────
         Positioned(
-          top: MediaQuery.of(context).padding.top + 90,
+          top: padding.top + 90,
           left: 14,
-          // Altura acotada para los paneles: en vertical, por encima de la
-          // banda central; en horizontal (no se cruzan), hasta el borde inferior.
-          bottom: MediaQuery.of(context).padding.bottom +
-              (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
-                  ? 16
-                  : 200),
+          // Altura acotada para los paneles: siempre por encima de la banda
+          // de tiempo + distancia. En vertical la banda flota a 140 px del
+          // borde; en horizontal baja junto a los controles (16 px) y mide
+          // ~66 px, así que la columna termina 8 px por encima de ella.
+          bottom: padding.bottom + (landscape ? 16 + 66 + 8 : 200),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -687,7 +696,7 @@ class _ImmersiveHUD extends StatelessWidget {
 
         // ── Top-right: Split + Watts stacked ───────────────────────────
         Positioned(
-          top: MediaQuery.of(context).padding.top + 90,
+          top: padding.top + 90,
           right: 14,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -713,10 +722,13 @@ class _ImmersiveHUD extends StatelessWidget {
         ),
 
         // ── Banda de tiempo + distancia (abajo a la izquierda, para no tapar el bote) ──
+        // En horizontal baja al nivel de los controles (que van centrados y
+        // dejan libre el borde izquierdo) para no pisar la columna de SPM +
+        // series cuando corre una rutina.
         Positioned(
           left: 14,
           right: 0,
-          bottom: 140,
+          bottom: landscape ? padding.bottom + 16 : 140,
           child: Align(
             alignment: Alignment.centerLeft,
             child: Container(

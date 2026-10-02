@@ -36,6 +36,24 @@ void main() {
     }
   }
 
+  test('las estrellas aparecen apenas oscurece (19 h), no solo de noche cerrada', () {
+    const size = Size(390, 844);
+    final cam = SceneCamera(size);
+    final env = Environment.of(EnvironmentId.lake);
+    int circlesAt(double hour) {
+      final canvas = _CountingCanvas();
+      SkyPainter(
+        camera: cam, palette: TimeOfDay.paletteFor(hour), light: TimeOfDay.lightFor(hour, cam),
+        hour: hour, environment: env, distance: 0, time: 0,
+      ).paint(canvas, size);
+      return canvas.circles;
+    }
+
+    // A las 19 h el sol todavía no se fue (isNight = false) pero ambient < 1:
+    // deben dibujarse las 80 estrellas, tenues. Al mediodía, ninguna.
+    expect(circlesAt(19) - circlesAt(12), greaterThanOrEqualTo(80));
+  });
+
   test('objetos detrás de la cámara se omiten y un puente encima no rompe', () {
     const size = Size(390, 844);
     final cam = SceneCamera(size);
@@ -52,4 +70,15 @@ void main() {
     ).paint(Canvas(recorder), size);
     expect(recorder.endRecording(), isNotNull);
   });
+}
+
+/// Canvas que solo cuenta los círculos; el resto de llamadas se ignoran.
+class _CountingCanvas implements Canvas {
+  int circles = 0;
+
+  @override
+  void drawCircle(Offset c, double radius, Paint paint) => circles++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

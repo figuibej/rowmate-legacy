@@ -46,17 +46,18 @@ class SkyPainter extends CustomPainter {
           colors: [palette.skyTop, palette.skyHorizon],
         ).createShader(skyRect),
     );
-    if (TimeOfDay.isNight(hour)) _stars(canvas, w, hz);
+    // Las estrellas aparecen a medida que oscurece (ambient 1 → 0.35), no
+    // recién con la noche cerrada: así el atardecer las va revelando.
+    final darkness = ((1 - palette.ambient) / 0.65).clamp(0.0, 1.0);
+    if (darkness > 0) _stars(canvas, w, hz, darkness);
     _sunOrMoon(canvas);
     _clouds(canvas, w, hz);
     environment.paintHorizon(canvas, size, camera, palette, distance, time);
   }
 
-  void _stars(Canvas canvas, double w, double hz) {
+  void _stars(Canvas canvas, double w, double hz, double darkness) {
     final rnd = math.Random(42);
     final paint = Paint();
-    // Las estrellas aparecen a medida que oscurece (ambient 1 → 0.35)
-    final darkness = ((1 - palette.ambient) / 0.65).clamp(0.0, 1.0);
     for (var i = 0; i < 80; i++) {
       final x = rnd.nextDouble() * w;
       final y = rnd.nextDouble() * hz * 0.85;
@@ -85,23 +86,37 @@ class SkyPainter extends CustomPainter {
   }
 
   void _clouds(Canvas canvas, double w, double hz) {
-    // Nubes suaves: bordes difuminados y casi invisibles de noche
+    // Nubes suaves: el borde se funde con un degradé radial (sin MaskFilter,
+    // que costaba una pasada offscreen por figura) y casi invisibles de noche
     final alpha = 0.08 + 0.5 * palette.ambient * palette.ambient;
-    final body = Paint()
-      ..color = Color.lerp(Colors.white, palette.skyHorizon, 0.25)!.withValues(alpha: alpha)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    final shade = Paint()
-      ..color = palette.skyTop.withValues(alpha: 0.12 * palette.ambient)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    final body = Color.lerp(Colors.white, palette.skyHorizon, 0.25)!.withValues(alpha: alpha);
+    final shade = palette.skyTop.withValues(alpha: 0.12 * palette.ambient);
     for (final (fx, fy, s, speed) in _cloudData) {
       final x = ((fx + distance * 0.0004 * speed + time * 0.004 * speed) % 1.2) * w - w * 0.1;
       final y = hz * (0.12 + fy * 0.6);
-      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.25), width: s * 2.6, height: s * 0.8), body);
-      canvas.drawCircle(Offset(x - s * 0.6, y), s * 0.5, body);
-      canvas.drawCircle(Offset(x, y - s * 0.15), s * 0.65, body);
-      canvas.drawCircle(Offset(x + s * 0.7, y + s * 0.05), s * 0.45, body);
-      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.5), width: s * 2.0, height: s * 0.3), shade);
+      _blob(canvas, Rect.fromCenter(center: Offset(x, y + s * 0.25), width: s * 2.6, height: s * 0.8), body);
+      _blob(canvas, Rect.fromCircle(center: Offset(x - s * 0.6, y), radius: s * 0.5), body);
+      _blob(canvas, Rect.fromCircle(center: Offset(x, y - s * 0.15), radius: s * 0.65), body);
+      _blob(canvas, Rect.fromCircle(center: Offset(x + s * 0.7, y + s * 0.05), radius: s * 0.45), body);
+      _blob(canvas, Rect.fromCenter(center: Offset(x, y + s * 0.5), width: s * 2.0, height: s * 0.3), shade);
     }
+  }
+
+  /// Óvalo que ocupa [rect], opaco hasta el 55 % del radio y transparente en
+  /// el borde. Se dibuja como círculo bajo una escala no uniforme porque
+  /// `RadialGradient.createShader` toma el lado más corto del rect como radio.
+  void _blob(Canvas canvas, Rect rect, Color color) {
+    final r = rect.height / 2;
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [color, color.withValues(alpha: 0)],
+        stops: const [0.55, 1.0],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: r));
+    canvas.save();
+    canvas.translate(rect.center.dx, rect.center.dy);
+    canvas.scale(rect.width / rect.height, 1);
+    canvas.drawCircle(Offset.zero, r, paint);
+    canvas.restore();
   }
 
   @override

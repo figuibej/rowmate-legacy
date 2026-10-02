@@ -5,10 +5,13 @@ import '../scene_camera.dart';
 import '../scene_state.dart';
 import '../time_of_day.dart';
 
-/// Agua bajo el horizonte: shader en GPU o, sin programa, un degradé con brillos.
+/// Agua bajo el horizonte: shader en GPU o, sin él, un degradé con brillos.
+///
+/// El [shader] lo crea y libera quien posee el painter (`_SceneViewState`);
+/// acá solo se le cargan los uniforms de cada frame.
 class WaterPainter extends CustomPainter {
   WaterPainter({
-    required this.program,
+    required this.shader,
     required this.camera,
     required this.state,
     required this.palette,
@@ -16,7 +19,7 @@ class WaterPainter extends CustomPainter {
     required this.environment,
   });
 
-  final ui.FragmentProgram? program;
+  final ui.FragmentShader? shader;
   final SceneCamera camera;
   final SceneState state;
   final ScenePalette palette;
@@ -24,10 +27,6 @@ class WaterPainter extends CustomPainter {
   final Environment environment;
 
   static const double sternOffset = 4.2;
-
-  // Un FragmentShader por programa; se reutiliza entre frames
-  static ui.FragmentShader? _shader;
-  static ui.FragmentProgram? _shaderProgram;
 
   /// Uniforms en el orden exacto de `water.frag` (los vec se expanden).
   static List<double> uniforms({
@@ -49,7 +48,6 @@ class WaterPainter extends CustomPainter {
       environment.waveAmplitude,
       environment.waveScale,
       light.position.dx,
-      light.position.dy,
       light.strength,
       near.r, near.g, near.b,
       far.r, far.g, far.b,
@@ -64,23 +62,18 @@ class WaterPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, camera.horizonY, size.width, size.height - camera.horizonY);
-    final p = program;
-    if (p == null) {
+    final s = shader;
+    if (s == null) {
       _paintFallback(canvas, rect);
       return;
     }
-    if (_shaderProgram != p) {
-      _shader = p.fragmentShader();
-      _shaderProgram = p;
-    }
-    final shader = _shader!;
     final values = uniforms(
       camera: camera, state: state, palette: palette, light: light, environment: environment,
     );
     for (var i = 0; i < values.length; i++) {
-      shader.setFloat(i, values[i]);
+      s.setFloat(i, values[i]);
     }
-    canvas.drawRect(rect, Paint()..shader = shader);
+    canvas.drawRect(rect, Paint()..shader = s);
   }
 
   void _paintFallback(Canvas canvas, Rect rect) {

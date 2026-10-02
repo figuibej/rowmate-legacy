@@ -13,7 +13,6 @@ uniform float uTime;
 uniform float uWaveAmp;
 uniform float uWaveScale;
 uniform float uSunX;
-uniform float uSunY;
 uniform float uLight;        // fuerza del brillo (0–1)
 uniform vec3 uWaterNear;
 uniform vec3 uWaterFar;
@@ -30,7 +29,8 @@ float hash(vec2 p) {
 }
 
 float vnoise(vec2 p) {
-  vec2 i = floor(p);
+  // Acotar la celda: con z grande el seno del hash pierde precisión
+  vec2 i = mod(floor(p), 289.0);
   vec2 f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
   float a = hash(i);
@@ -63,9 +63,6 @@ void main() {
   float zw = z + uDistance;
 
   float h = waveH(x, zw, z);
-  float e = 0.15;
-  float nx = (waveH(x + e, zw, z) - h) / e;
-  float nz = (waveH(x, zw + e, z) - h) / e;
 
   vec3 col = mix(uWaterNear, uWaterFar, smoothstep(2.0, 120.0, z));
   col *= 1.0 + h * uWaveAmp * 0.25;
@@ -78,7 +75,7 @@ void main() {
   float colW = 25.0 + z * 4.0;
   float dxs = (px.x - uSunX) / colW;
   float column = exp(-dxs * dxs) * 0.4;
-  float crest = smoothstep(0.3, 0.9, h * 0.5 + 0.5 - abs(nx + nz) * 0.1);
+  float crest = smoothstep(0.3, 0.9, h * 0.5 + 0.5);
   // Destellos suaves (sin celdas visibles), más finos cerca de la cámara
   float sparkle = smoothstep(0.45, 0.95, vnoise(vec2(x, zw) * (3.0 + 12.0 / z) + uTime * 0.8));
   float glitter = column * crest * (0.25 + 0.75 * sparkle) * uLight;
