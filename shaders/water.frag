@@ -93,7 +93,7 @@ void main() {
     float fade = 1.0 - smoothstep(0.0, uSternZ, back);
     float n = 0.6 + 0.4 * vnoise(vec2(x * 3.0, zw * 2.0) + uTime);
     float foam = (edge + center) * fade * uWakeStrength * n;
-    col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.5);
+    col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.35);
   }
 
   col = mix(col, uFog, smoothstep(80.0, 400.0, z));

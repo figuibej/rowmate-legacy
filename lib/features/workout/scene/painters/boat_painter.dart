@@ -173,10 +173,11 @@ class BoatPainter extends CustomPainter {
     final sz = seatZ(p);
     final kneeZ = (sz + feetZ) / 2 - 0.1 * (1 - legs);
     final kneeY = 0.25 + 0.4 * (1 - legs);
-    final shZ = sz - 0.55 * math.sin(lean);
-    final shY = hipY + 0.55 * math.cos(lean);
+    // Proporciones algo exageradas para que el remero se lea bien de lejos
+    final shZ = sz - 0.62 * math.sin(lean);
+    final shY = hipY + 0.62 * math.cos(lean);
     final headZ = shZ - 0.08 * math.sin(lean);
-    final headY = shY + 0.24;
+    final headY = shY + 0.27;
     final suit = _paint(const Color(0xFF1565C0));
     final skin = _paint(const Color(0xFFFFCC80));
     final hair = _paint(const Color(0xFF3E2723));
@@ -189,12 +190,12 @@ class BoatPainter extends CustomPainter {
     ], dark);
     // Tronco: trapecio cadera → hombros
     _fillQuad(c, [
-      (-0.17, hipY, sz), (0.17, hipY, sz), (0.24, shY, shZ), (-0.24, shY, shZ),
+      (-0.19, hipY, sz), (0.19, hipY, sz), (0.27, shY, shZ), (-0.27, shY, shZ),
     ], suit);
     // Cabeza con pelo
     final head = camera.project(0, headY, headZ);
     if (head != null) {
-      final r = 0.12 * camera.scaleAt(headZ);
+      final r = 0.14 * camera.scaleAt(headZ);
       c.drawCircle(head, r, skin);
       c.drawArc(Rect.fromCircle(center: head, radius: r * 1.02), math.pi, math.pi, true, hair);
     }

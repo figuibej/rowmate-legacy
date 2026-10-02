@@ -712,12 +712,13 @@ class _ImmersiveHUD extends StatelessWidget {
           ),
         ),
 
-        // ── Center band: Distance + Time ───────────────────────────────
+        // ── Banda de tiempo + distancia (abajo a la izquierda, para no tapar el bote) ──
         Positioned(
-          left: 0,
+          left: 14,
           right: 0,
           bottom: 140,
-          child: Center(
+          child: Align(
+            alignment: Alignment.centerLeft,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
