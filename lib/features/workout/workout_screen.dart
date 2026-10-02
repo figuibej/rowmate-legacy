@@ -6,11 +6,13 @@ import '../../core/models/interval_step.dart';
 import '../../core/models/routine.dart';
 import '../../core/models/rowing_data.dart';
 import '../../core/strava/strava_config.dart';
+import '../../core/dev/dev_config.dart';
 import '../../shared/theme.dart';
 import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
 import '../routines/routines_provider.dart';
 import 'workout_provider.dart';
+import 'immersive_workout_screen.dart';
 
 class WorkoutScreen extends StatelessWidget {
   const WorkoutScreen({super.key});
@@ -155,7 +157,7 @@ class _IdleView extends StatelessWidget {
   void _openFullscreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const _FullscreenWorkoutPage(),
+        builder: (_) => const ImmersiveWorkoutPage(),
       ),
     );
   }
@@ -299,7 +301,8 @@ class _FullscreenWorkoutPageState extends State<_FullscreenWorkoutPage> {
 
   void _showWorkoutCompletedDialog(BuildContext context, WorkoutProvider w) async {
     final l10n = AppLocalizations.of(context)!;
-    final profile = StravaConfig.isConfigured ? context.read<ProfileProvider>() : null;
+    // En modo simulador no se sube nada a Strava: sin profile no hay botón ni subida automática
+    final profile = StravaConfig.isConfigured && !kSimulator ? context.read<ProfileProvider>() : null;
     final shouldAskStrava = StravaConfig.isConfigured &&
                            profile != null &&
                            profile.isConnected &&
@@ -430,6 +433,7 @@ class _FullscreenWorkoutPageState extends State<_FullscreenWorkoutPage> {
   }
 
   void _triggerStravaUpload(BuildContext context, WorkoutProvider w) {
+    if (kSimulator) return; // en modo simulador no se sube nada a Strava
     final profile = context.read<ProfileProvider>();
     final sessionId = w.lastFinishedSessionId;
     if (!profile.isConnected || sessionId == null) return;
@@ -540,6 +544,7 @@ class _CompactTopBar extends StatelessWidget {
   }
 
   void _triggerStravaUpload(BuildContext context, WorkoutProvider w, AppLocalizations l10n) {
+    if (kSimulator) return; // en modo simulador no se sube nada a Strava
     final profile = context.read<ProfileProvider>();
     final sessionId = w.lastFinishedSessionId;
     if (!profile.isConnected || sessionId == null) return;

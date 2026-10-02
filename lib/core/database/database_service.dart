@@ -1,12 +1,14 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import '../dev/dev_config.dart';
 import '../models/routine.dart';
 import '../models/interval_step.dart';
 import '../models/workout_session.dart';
 
 /// Servicio de base de datos SQLite para rutinas y sesiones de entrenamiento
 class DatabaseService {
-  static const _dbName = 'rower_app.db';
+  // El simulador usa su propia base para no mezclar sesiones de prueba con las reales
+  static const _dbName = kSimulator ? 'rower_app_dev.db' : 'rower_app.db';
   static const _dbVersion = 7;
   Database? _db;
 

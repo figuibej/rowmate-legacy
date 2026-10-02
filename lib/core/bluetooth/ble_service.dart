@@ -8,6 +8,10 @@ enum BleStatus { off, scanning, connecting, connected, disconnected }
 
 /// Servicio BLE que maneja la conexión con el rower AMS-670B (módulo Kinomap-XG/H201)
 class BleService {
+  /// Licencia de flutter_blue_plus 2.x: nonprofit = uso personal/ONG/educativo.
+  /// Uso por una organización con fines de lucro requiere License.commercial (pago).
+  static const _fbpLicense = License.nonprofit;
+
   BluetoothDevice? _device;
   BluetoothDevice? _lastDevice; // para auto-reconexión
   BluetoothCharacteristic? _rowerDataChar;
@@ -115,7 +119,7 @@ class BleService {
 
     _isDisconnecting = false;
     try {
-      await device.connect(autoConnect: false, timeout: const Duration(seconds: 15));
+      await device.connect(license: _fbpLicense, autoConnect: false, timeout: const Duration(seconds: 15));
       await _discoverFtms(device);
       // Registrar el listener DESPUÉS de conectar para no capturar estados residuales.
       await _connSub?.cancel();
@@ -149,7 +153,7 @@ class BleService {
         _setStatus(BleStatus.connecting);
         _device = device;
         _isDisconnecting = false;
-        await device.connect(autoConnect: false, timeout: const Duration(seconds: 10));
+        await device.connect(license: _fbpLicense, autoConnect: false, timeout: const Duration(seconds: 10));
         await _discoverFtms(device);
         // Registrar el listener DESPUÉS de conectar para no capturar estados residuales.
         await _connSub?.cancel();

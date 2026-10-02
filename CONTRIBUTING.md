@@ -29,7 +29,8 @@ Open an issue describing what you want to add and why it would be useful for the
    # or
    git checkout -b fix/bug-description
    ```
-3. Make your changes and run the checks:
+3. Make your changes. No rowing machine? Try UI changes in simulator mode:
+   `flutter run --dart-define=SIMULATOR=true` (see the README). Then run the checks:
    ```bash
    flutter analyze
    flutter test

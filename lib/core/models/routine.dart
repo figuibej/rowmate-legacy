@@ -1,5 +1,9 @@
 import 'interval_step.dart';
 
+/// Posición de un paso aplanado dentro de su serie: grupo, repetición (desde 1)
+/// y cantidad total de repeticiones. Un paso suelto da (null, 1, 1).
+typedef StepPosition = ({String? groupId, int rep, int repCount});
+
 /// Una rutina de entrenamiento con sus pasos (intervalos/series/descanso)
 class Routine {
   final int? id;
@@ -59,6 +63,33 @@ class Routine {
             );
             result.add(progressed);
           }
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Posiciones alineadas índice por índice con [flattenedSteps]:
+  /// indica a qué repetición de qué serie pertenece cada paso.
+  List<StepPosition> get flattenedStepPositions {
+    final result = <StepPosition>[];
+    var i = 0;
+    while (i < steps.length) {
+      final gid = steps[i].groupId;
+      if (gid == null) {
+        result.add((groupId: null, rep: 1, repCount: 1));
+        i++;
+        continue;
+      }
+      final repeat = steps[i].groupRepeatCount ?? 1;
+      var size = 0;
+      while (i < steps.length && steps[i].groupId == gid) {
+        size++;
+        i++;
+      }
+      for (var r = 1; r <= repeat; r++) {
+        for (var k = 0; k < size; k++) {
+          result.add((groupId: gid, rep: r, repCount: repeat));
         }
       }
     }

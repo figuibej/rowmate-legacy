@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../dev/dev_config.dart';
 import '../models/workout_session.dart';
 import '../models/interval_step.dart';
 import 'strava_auth_service.dart';
@@ -77,6 +78,11 @@ class StravaApiService {
     List<IntervalStep>? steps,
     String? description,
   }) async {
+    if (kSimulator) {
+      debugPrint('[Strava] Modo simulador: subida bloqueada (sesión ${session.id})');
+      return null;
+    }
+
     final token = await _auth.getAccessToken();
     if (token == null) {
       debugPrint('[Strava] Upload failed: no access token');
