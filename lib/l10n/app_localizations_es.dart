@@ -86,6 +86,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutInProgress => 'Entrenamiento en curso...';
 
   @override
+  String get workoutScene => 'Escenario';
+
+  @override
+  String get sceneLake => 'Lago alpino';
+
+  @override
+  String get sceneRiver => 'Río urbano';
+
+  @override
+  String get sceneCoast => 'Costa';
+
+  @override
+  String get sceneRegatta => 'Canal de regata';
+
+  @override
   String get workoutFinish => 'Terminar';
 
   @override

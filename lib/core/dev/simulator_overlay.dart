@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../bluetooth/ble_service.dart';
 import '../bluetooth/simulated_ble_service.dart';
+import '../../features/workout/scene/scene_settings.dart';
 
 /// Presets de intensidad: (nombre, watts, spm)
 const _presets = [
@@ -66,9 +67,13 @@ class _SimulatorPanelState extends State<_SimulatorPanel> {
   SimulatedBleService get _ble =>
       context.read<BleService>() as SimulatedBleService;
 
+  double _nowHour() => DateTime.now().hour.toDouble();
+
   @override
   Widget build(BuildContext context) {
     final sim = _ble.simulator;
+    final scene = context.read<SceneSettings>();
+    final hour = scene.hourOverride;
     // Altura acotada + scroll: en ventanas bajas (landscape, ventana chica)
     // el panel no debe pasarse del borde superior y tapar el botón de cerrar.
     final maxHeight = MediaQuery.sizeOf(context).height -
@@ -127,6 +132,18 @@ class _SimulatorPanelState extends State<_SimulatorPanel> {
                 onMinus: () => setState(() => sim.targetSpm -= 1),
                 onPlus: () => setState(() => sim.targetSpm += 1),
               ),
+              _StepperRow(
+                label: 'Hora escena',
+                value: hour == null ? 'real' : '${hour.round() % 24}:00',
+                keyPrefix: 'sim-hour',
+                onMinus: () => setState(() => scene.hourOverride = ((hour ?? _nowHour()) - 1) % 24),
+                onPlus: () => setState(() => scene.hourOverride = ((hour ?? _nowHour()) + 1) % 24),
+              ),
+              if (hour != null)
+                TextButton(
+                  onPressed: () => setState(() => scene.hourOverride = null),
+                  child: const Text('Hora real'),
+                ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Remando'),

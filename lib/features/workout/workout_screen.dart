@@ -13,6 +13,8 @@ import '../profile/profile_provider.dart';
 import '../routines/routines_provider.dart';
 import 'workout_provider.dart';
 import 'immersive_workout_screen.dart';
+import 'scene/environment_picker.dart';
+import 'scene/water_shader.dart';
 
 class WorkoutScreen extends StatelessWidget {
   const WorkoutScreen({super.key});
@@ -37,6 +39,10 @@ class WorkoutScreen extends StatelessWidget {
 class _IdleView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Precarga del shader de agua (idempotente: cachea el Future) para que la
+    // escena arranque con el agua en GPU y no con el fallback.
+    WaterShader.load();
+
     final device = context.watch<DeviceProvider>();
     final routines = context.watch<RoutinesProvider>().routines;
     final workout = context.read<WorkoutProvider>();
@@ -69,6 +75,12 @@ class _IdleView extends StatelessWidget {
                   ],
                 ),
               ),
+
+            Text(l10n.workoutScene,
+                style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            const SizedBox(height: 8),
+            const EnvironmentPicker(),
+            const SizedBox(height: 16),
 
             FilledButton.icon(
               onPressed: connected

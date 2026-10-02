@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +9,9 @@ import '../../core/dev/dev_config.dart';
 import '../../shared/theme.dart';
 import '../device/device_provider.dart';
 import '../profile/profile_provider.dart';
+import 'scene/environment.dart';
+import 'scene/scene_settings.dart';
+import 'scene/scene_view.dart';
 import 'series_panels.dart';
 import 'workout_provider.dart';
 
@@ -22,76 +24,26 @@ class ImmersiveWorkoutPage extends StatefulWidget {
   State<ImmersiveWorkoutPage> createState() => _ImmersiveWorkoutPageState();
 }
 
-class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
-    with TickerProviderStateMixin {
+class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage> {
   bool _hasShownCompletionDialog = false;
-
-  // Rowing stroke animation
-  late AnimationController _strokeController;
-  // Cloud parallax
-  late AnimationController _cloudController;
-  // Water ripple / wake
-  late AnimationController _wakeController;
-
-  double _lastSpm = 0;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
-    _strokeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _cloudController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 40),
-    )..repeat();
-    _wakeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _strokeController.dispose();
-    _cloudController.dispose();
-    _wakeController.dispose();
     super.dispose();
-  }
-
-  void _updateAvatarAnimationFromSpm(double spm, bool isActive) {
-    if (!isActive || spm < 1) {
-      _strokeController.stop();
-      _wakeController.stop();
-      return;
-    }
-
-    // One full stroke cycle per... (60/spm) seconds
-    final cycleDuration =
-        Duration(milliseconds: ((60 / spm) * 1000).round().clamp(400, 3000));
-
-    if ((spm - _lastSpm).abs() > 0.5 || !_strokeController.isAnimating) {
-      _strokeController.duration = cycleDuration;
-      _strokeController.repeat();
-      _wakeController.duration = cycleDuration;
-      _wakeController.repeat();
-      _lastSpm = spm;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final w = context.watch<WorkoutProvider>();
     final sp = w.stepProgress;
-
-    _updateAvatarAnimationFromSpm(
-      w.data.strokeRate,
-      w.phase == WorkoutPhase.active,
-    );
+    final scene = context.watch<SceneSettings>();
 
     // Completion dialog — fire once
     if (w.phase == WorkoutPhase.finished && !_hasShownCompletionDialog) {
@@ -121,34 +73,16 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // ── 1. Outdoor background ──────────────────────────────
-            AnimatedBuilder(
-              animation: Listenable.merge([_cloudController, _wakeController]),
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _OutdoorScenePainter(
-                    cloudOffset: _cloudController.value,
-                    wakePhase: _wakeController.value,
-                    isRowing: w.phase == WorkoutPhase.active &&
-                        w.data.strokeRate > 0,
-                  ),
-                );
-              },
-            ),
-
-            // ── 2. Rowing avatar ───────────────────────────────────
-            AnimatedBuilder(
-              animation: _strokeController,
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _RowingAvatarPainter(
-                    strokePhase: _strokeController.value,
-                    isRowing: w.phase == WorkoutPhase.active &&
-                        w.data.strokeRate > 0,
-                    isPaused: w.phase == WorkoutPhase.paused,
-                  ),
-                );
-              },
+            // ── 1+2. Escena 2.5D: cielo, agua, orilla y bote ───────
+            // RepaintBoundary: la escena repinta cada frame; el HUD no tiene
+            // por qué acompañarla (ni al revés).
+            RepaintBoundary(
+              child: SceneView(
+                environment: Environment.of(scene.environmentId),
+                data: w.data,
+                isActive: w.phase == WorkoutPhase.active,
+                hourOverride: scene.hourOverride,
+              ),
             ),
 
             // ── 3. Stage timeline (top) ────────────────────────────
@@ -161,13 +95,15 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
                   : _FreeWorkoutTopBar(w: w),
             ),
 
-            // ── 4. HUD overlay ─────────────────────────────────────
-            _ImmersiveHUD(
-              data: w.data,
-              elapsedSeconds: w.totalElapsedSeconds,
-              currentStep: sp?.step,
-              // Parciales y series: solo en rutinas, colapsables
-              belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
+            // ── 4. HUD overlay (solo repinta cuando cambian los datos) ──
+            RepaintBoundary(
+              child: _ImmersiveHUD(
+                data: w.data,
+                elapsedSeconds: w.totalElapsedSeconds,
+                currentStep: sp?.step,
+                // Parciales y series: solo en rutinas, colapsables
+                belowSpm: w.routine != null ? SeriesPanels(tracker: w.series) : null,
+              ),
             ),
 
             // ── 5. Controls ────────────────────────────────────────
@@ -357,391 +293,6 @@ class _ImmersiveWorkoutPageState extends State<ImmersiveWorkoutPage>
       ),
     );
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// OUTDOOR SCENE PAINTER
-// ═══════════════════════════════════════════════════════════════════════════
-
-class _OutdoorScenePainter extends CustomPainter {
-  final double cloudOffset; // 0..1 looping
-  final double wakePhase;   // 0..1 looping
-  final bool isRowing;
-
-  const _OutdoorScenePainter({
-    required this.cloudOffset,
-    required this.wakePhase,
-    required this.isRowing,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // ── Sky gradient ──────────────────────────────────────────────────────
-    final skyGradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.center,
-      colors: const [
-        Color(0xFF0A2040), // deep dawn blue
-        Color(0xFF1565C0), // mid sky
-        Color(0xFF42A5F5), // horizon glow
-      ],
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, w, h * 0.60),
-      Paint()..shader = skyGradient.createShader(Rect.fromLTWH(0, 0, w, h * 0.60)),
-    );
-
-    // ── Sun / glow near horizon ───────────────────────────────────────────
-    final sunY = h * 0.42;
-    final sunPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFFFFD082).withOpacity(0.7),
-          const Color(0xFFFF8C42).withOpacity(0.3),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(w * 0.5, sunY), radius: 80));
-    canvas.drawCircle(Offset(w * 0.5, sunY), 80, sunPaint);
-    canvas.drawCircle(
-      Offset(w * 0.5, sunY),
-      18,
-      Paint()..color = const Color(0xFFFFE57F),
-    );
-
-    // ── Clouds ────────────────────────────────────────────────────────────
-    final cloudPaint = Paint()..color = Colors.white.withOpacity(0.55);
-    final clouds = [
-      (x: 0.08, y: 0.12, r: 28.0),
-      (x: 0.22, y: 0.08, r: 18.0),
-      (x: 0.55, y: 0.10, r: 32.0),
-      (x: 0.70, y: 0.15, r: 22.0),
-      (x: 0.88, y: 0.09, r: 24.0),
-    ];
-    for (final c in clouds) {
-      final dx = ((c.x + cloudOffset * 0.25) % 1.0) * w;
-      _drawCloud(canvas, Offset(dx, h * c.y), c.r, cloudPaint);
-    }
-
-    // ── Treeline / shore at horizon ───────────────────────────────────────
-    final horizonY = h * 0.52;
-    _drawTreeline(canvas, size, horizonY);
-
-    // ── Water gradient ────────────────────────────────────────────────────
-    final waterGradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: const [
-        Color(0xFF1565C0),
-        Color(0xFF0D3B6E),
-        Color(0xFF071E3D),
-      ],
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(0, horizonY, w, h - horizonY),
-      Paint()
-        ..shader = waterGradient
-            .createShader(Rect.fromLTWH(0, horizonY, w, h - horizonY)),
-    );
-
-    // ── Water shimmer lines ───────────────────────────────────────────────
-    final shimmerPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
-      ..strokeWidth = 1.5;
-    for (int i = 0; i < 8; i++) {
-      final lineY = horizonY + (h - horizonY) * (i + 1) / 9;
-      final lineW = w * (0.3 + 0.4 * i / 8);
-      canvas.drawLine(
-        Offset((w - lineW) / 2, lineY),
-        Offset((w + lineW) / 2, lineY),
-        shimmerPaint,
-      );
-    }
-
-    // ── Wake / water ripples behind boat ─────────────────────────────────
-    if (isRowing) {
-      _drawWake(canvas, size, horizonY, wakePhase);
-    }
-  }
-
-  void _drawCloud(Canvas canvas, Offset center, double r, Paint p) {
-    canvas.drawCircle(center, r, p);
-    canvas.drawCircle(center.translate(-r * 0.7, r * 0.3), r * 0.65, p);
-    canvas.drawCircle(center.translate(r * 0.7, r * 0.3), r * 0.65, p);
-    canvas.drawCircle(center.translate(r * 1.2, 0), r * 0.5, p);
-    canvas.drawCircle(center.translate(-r * 1.2, 0), r * 0.5, p);
-  }
-
-  void _drawTreeline(Canvas canvas, Size size, double horizonY) {
-    final w = size.width;
-    final treePaint = Paint()..color = const Color(0xFF1B5E20);
-    final treeDarkPaint = Paint()..color = const Color(0xFF0A3D10);
-
-    // Simple tree silhouettes as triangles
-    final treeData = [
-      (x: 0.02, h: 0.07), (x: 0.06, h: 0.09), (x: 0.10, h: 0.06),
-      (x: 0.14, h: 0.08), (x: 0.18, h: 0.05), (x: 0.22, h: 0.07),
-      (x: 0.65, h: 0.06), (x: 0.69, h: 0.08), (x: 0.73, h: 0.05),
-      (x: 0.77, h: 0.09), (x: 0.81, h: 0.07), (x: 0.85, h: 0.05),
-      (x: 0.89, h: 0.08), (x: 0.93, h: 0.06), (x: 0.97, h: 0.07),
-    ];
-
-    for (final t in treeData) {
-      final tx = t.x * w;
-      final th = t.h * size.height;
-      final treeW = th * 0.55;
-      final path = Path()
-        ..moveTo(tx, horizonY - th)
-        ..lineTo(tx - treeW / 2, horizonY)
-        ..lineTo(tx + treeW / 2, horizonY)
-        ..close();
-      canvas.drawPath(path, treePaint);
-      // Shadow side
-      final shadowPath = Path()
-        ..moveTo(tx, horizonY - th)
-        ..lineTo(tx, horizonY)
-        ..lineTo(tx + treeW / 2, horizonY)
-        ..close();
-      canvas.drawPath(shadowPath, treeDarkPaint);
-    }
-  }
-
-  void _drawWake(Canvas canvas, Size size, double horizonY, double phase) {
-    final centerX = size.width / 2;
-    final startY = horizonY + size.height * 0.08; // just below boat
-    final maxY = size.height * 0.92;
-
-    for (int i = 0; i < 4; i++) {
-      final t = ((phase + i * 0.25) % 1.0);
-      final wakeY = startY + (maxY - startY) * t;
-      final halfW = 12 + 50 * t;
-      final opacity = (1.0 - t) * 0.35;
-      final wakePaint = Paint()
-        ..color = Colors.white.withOpacity(opacity)
-        ..strokeWidth = 1.5
-        ..style = PaintingStyle.stroke;
-
-      final path = Path()
-        ..moveTo(centerX - halfW, wakeY)
-        ..quadraticBezierTo(centerX, wakeY - 6, centerX + halfW, wakeY);
-      canvas.drawPath(path, wakePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_OutdoorScenePainter old) =>
-      cloudOffset != old.cloudOffset ||
-      wakePhase != old.wakePhase ||
-      isRowing != old.isRowing;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ROWING AVATAR PAINTER
-// ═══════════════════════════════════════════════════════════════════════════
-
-class _RowingAvatarPainter extends CustomPainter {
-  final double strokePhase; // 0..1
-  final bool isRowing;
-  final bool isPaused;
-
-  const _RowingAvatarPainter({
-    required this.strokePhase,
-    required this.isRowing,
-    required this.isPaused,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Boat sits just below the horizon (~55% height)
-    final boatCenterY = h * 0.60;
-    final boatCenterX = w * 0.5;
-
-    // Stroke animation: 0→0.4 = drive (lean back, arms pull), 0.4→0.7 = finish,
-    // 0.7→1.0 = recovery (lean forward, arms extend)
-    final phase = isRowing ? strokePhase : 0.35; // rest at mid-drive if idle
-
-    // Body lean angle: from +20° (forward/catch) to -20° (back/finish)
-    final leanAngle = _lerp(-0.35, 0.35, _smoothPhase(phase));
-
-    // Arm extension: 0 = fully extended (catch), 1 = fully bent (finish)
-    final armBend = phase < 0.5
-        ? _lerp(0.0, 1.0, phase / 0.5)
-        : _lerp(1.0, 0.0, (phase - 0.5) / 0.5);
-
-    // ── Draw boat ─────────────────────────────────────────────────────────
-    _drawBoat(canvas, boatCenterX, boatCenterY, w);
-
-    // ── Draw oar blades ───────────────────────────────────────────────────
-    _drawOars(canvas, boatCenterX, boatCenterY, armBend, w);
-
-    // ── Draw rower figure ─────────────────────────────────────────────────
-    _drawRower(canvas, boatCenterX, boatCenterY - 4, leanAngle, armBend);
-  }
-
-  double _smoothPhase(double t) {
-    // Ease in-out
-    return t < 0.5 ? 2 * t * t : 1 - math.pow(-2 * t + 2, 2) / 2;
-  }
-
-  double _lerp(double a, double b, double t) => a + (b - a) * t.clamp(0, 1);
-
-  void _drawBoat(Canvas canvas, double cx, double cy, double screenW) {
-    final boatW = screenW * 0.45;
-    final boatH = 14.0;
-
-    // Hull
-    final hullPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [const Color(0xFFF5F5F5), const Color(0xFFBDBDBD)],
-      ).createShader(Rect.fromLTWH(cx - boatW / 2, cy, boatW, boatH));
-
-    final hull = Path()
-      ..moveTo(cx - boatW / 2, cy + boatH * 0.4)
-      ..quadraticBezierTo(cx - boatW * 0.3, cy, cx, cy)
-      ..quadraticBezierTo(cx + boatW * 0.3, cy, cx + boatW / 2, cy + boatH * 0.4)
-      ..lineTo(cx + boatW * 0.38, cy + boatH)
-      ..quadraticBezierTo(cx, cy + boatH * 1.3, cx - boatW * 0.38, cy + boatH)
-      ..close();
-
-    canvas.drawPath(hull, hullPaint);
-
-    // Hull accent line
-    canvas.drawPath(
-      hull,
-      Paint()
-        ..color = const Color(0xFF00B4D8).withOpacity(0.7)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-
-    // Water line reflection
-    canvas.drawLine(
-      Offset(cx - boatW * 0.4, cy + boatH * 1.1),
-      Offset(cx + boatW * 0.4, cy + boatH * 1.1),
-      Paint()
-        ..color = Colors.white.withOpacity(0.15)
-        ..strokeWidth = 1,
-    );
-  }
-
-  void _drawOars(
-      Canvas canvas, double cx, double boatY, double armBend, double screenW) {
-    final oarPaint = Paint()
-      ..color = const Color(0xFFBCAAA4)
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    final bladeColor = Paint()..color = const Color(0xFF00B4D8);
-
-    // Oar angle swings with arm bend
-    // armBend 0 = catch (oar behind), 1 = finish (oar forward)
-    final oarAngle = _lerp(-0.5, 0.5, armBend); // radians sweep
-
-    for (final side in [-1.0, 1.0]) {
-      final pivotX = cx + side * screenW * 0.08;
-      final pivotY = boatY + 6;
-      final oarLen = screenW * 0.28;
-
-      final angle = oarAngle * side + math.pi / 2;
-      final endX = pivotX + oarLen * math.cos(angle) * side;
-      final endY = pivotY + oarLen * math.sin(angle) * 0.35;
-
-      // Shaft
-      canvas.drawLine(Offset(pivotX, pivotY), Offset(endX, endY), oarPaint);
-
-      // Blade (small rectangle at tip)
-      canvas.save();
-      canvas.translate(endX, endY);
-      canvas.rotate(angle - math.pi / 2);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-6, -2, 12, 18),
-          const Radius.circular(3),
-        ),
-        bladeColor,
-      );
-      canvas.restore();
-    }
-  }
-
-  void _drawRower(
-      Canvas canvas, double cx, double cy, double leanAngle, double armBend) {
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.rotate(leanAngle);
-
-    final skinPaint = Paint()..color = const Color(0xFFFFCC80);
-    final suitPaint = Paint()..color = const Color(0xFF1565C0);
-    final darkSuit = Paint()..color = const Color(0xFF0D3B6E);
-
-    // Torso
-    final torsoPath = Path()
-      ..moveTo(-9, -30)
-      ..lineTo(-10, 0)
-      ..lineTo(10, 0)
-      ..lineTo(9, -30)
-      ..close();
-    canvas.drawPath(torsoPath, suitPaint);
-
-    // Legs (seat)
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(-10, -4, 20, 10), const Radius.circular(3)),
-      darkSuit,
-    );
-
-    // Arms
-    final armExtend = _lerp(18.0, 8.0, armBend); // arm reach
-    const armY = -18.0;
-    // Left arm
-    canvas.drawLine(
-      const Offset(-9, armY),
-      Offset(-armExtend, armY + 4),
-      Paint()
-        ..color = const Color(0xFF1565C0)
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
-    );
-    // Right arm
-    canvas.drawLine(
-      const Offset(9, armY),
-      Offset(armExtend, armY + 4),
-      Paint()
-        ..color = const Color(0xFF1565C0)
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Hands
-    canvas.drawCircle(Offset(-armExtend, armY + 4), 4, skinPaint);
-    canvas.drawCircle(Offset(armExtend, armY + 4), 4, skinPaint);
-
-    // Head
-    canvas.drawCircle(const Offset(0, -36), 10, skinPaint);
-
-    // Helmet / cap
-    canvas.drawArc(
-      const Rect.fromLTWH(-10, -48, 20, 20),
-      math.pi,
-      math.pi,
-      true,
-      Paint()..color = const Color(0xFF1565C0),
-    );
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_RowingAvatarPainter old) =>
-      strokePhase != old.strokePhase ||
-      isRowing != old.isRowing ||
-      isPaused != old.isPaused;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1109,18 +660,21 @@ class _ImmersiveHUD extends StatelessWidget {
             invert: true)
         : MetricColors.split;
 
+    final padding = MediaQuery.of(context).padding;
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height;
+
     return Stack(
       children: [
         // ── Top-left: SPM (biggest metric) ─────────────────────────────
         Positioned(
-          top: MediaQuery.of(context).padding.top + 90,
+          top: padding.top + 90,
           left: 14,
-          // Altura acotada para los paneles: en vertical, por encima de la
-          // banda central; en horizontal (no se cruzan), hasta el borde inferior.
-          bottom: MediaQuery.of(context).padding.bottom +
-              (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
-                  ? 16
-                  : 200),
+          // Altura acotada para los paneles: siempre por encima de la banda
+          // de tiempo + distancia. En vertical la banda flota a 140 px del
+          // borde; en horizontal baja junto a los controles (16 px) y mide
+          // ~66 px, así que la columna termina 8 px por encima de ella.
+          bottom: padding.bottom + (landscape ? 16 + 66 + 8 : 200),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1142,7 +696,7 @@ class _ImmersiveHUD extends StatelessWidget {
 
         // ── Top-right: Split + Watts stacked ───────────────────────────
         Positioned(
-          top: MediaQuery.of(context).padding.top + 90,
+          top: padding.top + 90,
           right: 14,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1167,12 +721,16 @@ class _ImmersiveHUD extends StatelessWidget {
           ),
         ),
 
-        // ── Center band: Distance + Time ───────────────────────────────
+        // ── Banda de tiempo + distancia (abajo a la izquierda, para no tapar el bote) ──
+        // En horizontal baja al nivel de los controles (que van centrados y
+        // dejan libre el borde izquierdo) para no pisar la columna de SPM +
+        // series cuando corre una rutina.
         Positioned(
-          left: 0,
+          left: 14,
           right: 0,
-          bottom: 140,
-          child: Center(
+          bottom: landscape ? padding.bottom + 16 : 140,
+          child: Align(
+            alignment: Alignment.centerLeft,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(

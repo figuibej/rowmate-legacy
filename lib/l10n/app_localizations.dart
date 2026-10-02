@@ -242,6 +242,36 @@ abstract class AppLocalizations {
   /// **'Workout in progress...'**
   String get workoutInProgress;
 
+  /// No description provided for @workoutScene.
+  ///
+  /// In en, this message translates to:
+  /// **'Scenery'**
+  String get workoutScene;
+
+  /// No description provided for @sceneLake.
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine lake'**
+  String get sceneLake;
+
+  /// No description provided for @sceneRiver.
+  ///
+  /// In en, this message translates to:
+  /// **'City river'**
+  String get sceneRiver;
+
+  /// No description provided for @sceneCoast.
+  ///
+  /// In en, this message translates to:
+  /// **'Coast'**
+  String get sceneCoast;
+
+  /// No description provided for @sceneRegatta.
+  ///
+  /// In en, this message translates to:
+  /// **'Regatta course'**
+  String get sceneRegatta;
+
   /// No description provided for @workoutFinish.
   ///
   /// In en, this message translates to:
