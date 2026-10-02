@@ -221,7 +221,7 @@ abstract class AppLocalizations {
   /// No description provided for @hrmWatchHint.
   ///
   /// In en, this message translates to:
-  /// **'A smartwatch needs an app that broadcasts heart rate over Bluetooth (e.g. Heart for Bluetooth on Wear OS).'**
+  /// **'A smartwatch (Wear OS, Apple Watch) needs an app that broadcasts heart rate over Bluetooth, e.g. Heart for Bluetooth on Wear OS.'**
   String get hrmWatchHint;
 
   /// No description provided for @hrmSearch.
@@ -239,13 +239,13 @@ abstract class AppLocalizations {
   /// No description provided for @hrmSearching.
   ///
   /// In en, this message translates to:
-  /// **'Searching sensors…'**
+  /// **'Searching for sensors...'**
   String get hrmSearching;
 
   /// No description provided for @hrmConnectingTo.
   ///
   /// In en, this message translates to:
-  /// **'Connecting to {name}…'**
+  /// **'Connecting to {name}...'**
   String hrmConnectingTo(String name);
 
   /// No description provided for @hrmConnect.
@@ -269,7 +269,7 @@ abstract class AppLocalizations {
   /// No description provided for @hrmReconnecting.
   ///
   /// In en, this message translates to:
-  /// **'reconnecting…'**
+  /// **'reconnecting...'**
   String get hrmReconnecting;
 
   /// No description provided for @hrmNotFound.

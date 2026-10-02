@@ -22,11 +22,11 @@
   "deviceBtEnable": "Enable Bluetooth",
   "hrmTitle": "Heart rate sensor",
   "hrmNoSensor": "No sensor",
-  "hrmWatchHint": "A smartwatch needs an app that broadcasts heart rate over Bluetooth (e.g. Heart for Bluetooth on Wear OS).",
+  "hrmWatchHint": "A smartwatch (Wear OS, Apple Watch) needs an app that broadcasts heart rate over Bluetooth, e.g. Heart for Bluetooth on Wear OS.",
   "hrmSearch": "Search",
   "hrmSearchOther": "Search another",
-  "hrmSearching": "Searching sensors…",
-  "hrmConnectingTo": "Connecting to {name}…",
+  "hrmSearching": "Searching for sensors...",
+  "hrmConnectingTo": "Connecting to {name}...",
   "@hrmConnectingTo": {
     "placeholders": {
       "name": { "type": "String" }
@@ -35,7 +35,7 @@
   "hrmConnect": "Connect",
   "hrmDisconnect": "Disconnect",
   "hrmForget": "Forget",
-  "hrmReconnecting": "reconnecting…",
+  "hrmReconnecting": "reconnecting...",
   "hrmNotFound": "not found",
   "hrmUnknownSensor": "Unknown sensor",
   "hrmIncompatible": "Not a compatible heart rate sensor (no Heart Rate service)",

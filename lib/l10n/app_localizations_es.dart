@@ -74,7 +74,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get hrmWatchHint =>
-      'Un smartwatch necesita una app que transmita el pulso por Bluetooth (p. ej. Heart for Bluetooth en Wear OS).';
+      'Un smartwatch (Wear OS, Apple Watch) necesita una app que transmita el pulso por Bluetooth, p. ej. Heart for Bluetooth en Wear OS.';
 
   @override
   String get hrmSearch => 'Buscar';
@@ -83,11 +83,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hrmSearchOther => 'Buscar otro';
 
   @override
-  String get hrmSearching => 'Buscando sensores…';
+  String get hrmSearching => 'Buscando sensores...';
 
   @override
   String hrmConnectingTo(String name) {
-    return 'Conectando a $name…';
+    return 'Conectando a $name...';
   }
 
   @override
@@ -100,7 +100,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hrmForget => 'Olvidar';
 
   @override
-  String get hrmReconnecting => 'reconectando…';
+  String get hrmReconnecting => 'reconectando...';
 
   @override
   String get hrmNotFound => 'no encontrado';
