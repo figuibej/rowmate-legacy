@@ -122,6 +122,48 @@ void main() {
     hrm.dispose();
   });
 
+  test('orden real de caída: bpm 0 y después disconnected', () async {
+    final ble = _FakeBle();
+    final hrm = _FakeHrm();
+    final wp = WorkoutProvider(ble, hrm, DatabaseService());
+    ble.data.add(const RowingData(heartRate: 90));
+    hrm.bpmCtrl.add(140);
+    await pumpEventQueue();
+    expect(wp.data.heartRate, 140);
+
+    hrm.bpmCtrl.add(0); // _cleanupConnection emite 0 antes de disconnected
+    hrm.statusCtrl.add(HrmStatus.disconnected);
+    await pumpEventQueue();
+    expect(wp.data.heartRate, 0);
+
+    ble.data.add(const RowingData(heartRate: 90));
+    await pumpEventQueue();
+    expect(wp.data.heartRate, 90, reason: 'el FTMS repone su valor');
+
+    wp.dispose();
+    ble.dispose();
+    hrm.dispose();
+  });
+
+  test('un bpm recibido durante connecting se conserva al pasar a connected', () async {
+    final ble = _FakeBle();
+    final hrm = _FakeHrm();
+    final wp = WorkoutProvider(ble, hrm, DatabaseService());
+    hrm.statusCtrl.add(HrmStatus.connecting);
+    hrm.bpmCtrl.add(120);
+    hrm.statusCtrl.add(HrmStatus.connected);
+    await pumpEventQueue();
+    expect(wp.data.heartRate, 120);
+
+    ble.data.add(const RowingData(heartRate: 90));
+    await pumpEventQueue();
+    expect(wp.data.heartRate, 120, reason: 'el sensor sigue mandando');
+
+    wp.dispose();
+    ble.dispose();
+    hrm.dispose();
+  });
+
   test('connected del sensor sin bpm previo no toca los datos', () async {
     final ble = _FakeBle();
     final hrm = _FakeHrm();

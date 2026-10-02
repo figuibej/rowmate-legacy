@@ -354,6 +354,11 @@ class HeartRateService {
     if (_status != HrmStatus.connecting) return;
     final pending = _device;
     _device = null;
+    // El intento superado ya puede haber suscrito 0x2A37: que no siga
+    // emitiendo bpm con el estado en disconnected.
+    _notifySub?.cancel();
+    _notifySub = null;
+    _watchdog.stop();
     _setStatus(HrmStatus.disconnected);
     if (pending != null) unawaited(_quietDisconnect(pending));
   }
