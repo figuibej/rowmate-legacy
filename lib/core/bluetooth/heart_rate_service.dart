@@ -285,6 +285,9 @@ class HeartRateService {
       // después de conectar, p. ej. un diálogo de emparejamiento lento):
       // soltarlo para no dejar un GATT colgado invisible para la app.
       await _quietDisconnect(device);
+      // Mientras desconectábamos pudo arrancar otra acción (Buscar otro,
+      // Olvidar, connect): entonces el estado ya no es nuestro.
+      if (gen != _connectGen) throw const _SupersededException();
       _cleanupConnection();
       _setStatus(HrmStatus.disconnected);
       rethrow;
