@@ -1,0 +1,3 @@
+# Flutter regenera estos archivos con LF en cada pub get/run; sin esto,
+# core.autocrlf=true en Windows los marca como modificados sin cambios reales.
+windows/flutter/generated_* text eol=lf
