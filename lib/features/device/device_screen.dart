@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/bluetooth/ble_service.dart';
 import '../../shared/theme.dart';
 import 'device_provider.dart';
+import 'heart_rate_card.dart';
+import 'heart_rate_provider.dart';
 
 class DeviceScreen extends StatelessWidget {
   const DeviceScreen({super.key});
@@ -116,6 +118,8 @@ class _ConnectedViewState extends State<_ConnectedView> {
           ),
           const SizedBox(height: 24),
           _LiveMetricsGrid(p: p),
+          const SizedBox(height: 12),
+          const HeartRateCard(),
           const SizedBox(height: 32),
           if (_scrollDownCount >= 3 && !_showDebug)
             TextButton.icon(
@@ -341,6 +345,7 @@ class _ScanView extends StatelessWidget {
     final isConnecting = p.status == BleStatus.connecting;
     final btOff = p.adapterState == BluetoothAdapterState.off;
     final btUnauthorized = p.adapterState == BluetoothAdapterState.unauthorized;
+    final hrmScanning = context.select<HeartRateProvider, bool>((h) => h.isScanning);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -389,7 +394,7 @@ class _ScanView extends StatelessWidget {
             )
           else ...[
             FilledButton.icon(
-              onPressed: isScanning || isConnecting ? null : p.startScan,
+              onPressed: isScanning || isConnecting || hrmScanning ? null : p.startScan,
               icon: isScanning
                   ? const SizedBox(
                       width: 16,
@@ -460,6 +465,8 @@ class _ScanView extends StatelessWidget {
                   },
                 ),
               ),
+            const SizedBox(height: 12),
+            const HeartRateCard(),
           ],
         ],
       ),
