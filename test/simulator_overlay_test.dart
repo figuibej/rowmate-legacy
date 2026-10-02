@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:rowmate/core/bluetooth/ble_service.dart';
+import 'package:rowmate/core/bluetooth/heart_rate_service.dart';
 import 'package:rowmate/core/bluetooth/simulated_ble_service.dart';
+import 'package:rowmate/core/bluetooth/simulated_heart_rate_service.dart';
 import 'package:rowmate/core/dev/rowing_simulator.dart';
 import 'package:rowmate/core/dev/simulator_overlay.dart';
 import 'package:rowmate/features/workout/scene/scene_settings.dart';
@@ -15,10 +17,12 @@ void main() {
       (tester) async {
     SharedPreferences.setMockInitialValues({});
     final ble = SimulatedBleService(simulator: RowingSimulator(noise: false));
+    final hrm = SimulatedHeartRateService(ble.simulator);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           Provider<BleService>.value(value: ble),
+          Provider<HeartRateService>.value(value: hrm),
           ChangeNotifierProvider(create: (_) => SceneSettings()),
         ],
         child: MaterialApp(
@@ -54,6 +58,10 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
 
+    await tester.tap(find.text('Simular caída del pulsómetro'));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+
     await tester.tap(find.text('Fuerte'));
     await tester.pump();
     expect(ble.simulator.targetWatts, 280);
@@ -68,6 +76,7 @@ void main() {
     expect(find.text('280 W'), findsNothing);
 
     ble.dispose();
+    hrm.dispose();
   });
 }
 
@@ -80,10 +89,12 @@ void _shortWindowTest() {
 
     SharedPreferences.setMockInitialValues({});
     final ble = SimulatedBleService(simulator: RowingSimulator(noise: false));
+    final hrm = SimulatedHeartRateService(ble.simulator);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           Provider<BleService>.value(value: ble),
+          Provider<HeartRateService>.value(value: hrm),
           ChangeNotifierProvider(create: (_) => SceneSettings()),
         ],
         child: MaterialApp(
@@ -102,5 +113,6 @@ void _shortWindowTest() {
     expect(find.text('150 W'), findsNothing);
 
     ble.dispose();
+    hrm.dispose();
   });
 }

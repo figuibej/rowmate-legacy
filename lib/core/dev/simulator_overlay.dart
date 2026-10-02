@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../bluetooth/ble_service.dart';
+import '../bluetooth/heart_rate_service.dart';
 import '../bluetooth/simulated_ble_service.dart';
+import '../bluetooth/simulated_heart_rate_service.dart';
 import '../../features/workout/scene/scene_settings.dart';
 
 /// Presets de intensidad: (nombre, watts, spm)
@@ -66,6 +68,8 @@ class _SimulatorPanelState extends State<_SimulatorPanel> {
   // pero el Provider conserva el original (el que emite los datos).
   SimulatedBleService get _ble =>
       context.read<BleService>() as SimulatedBleService;
+  SimulatedHeartRateService get _hrm =>
+      context.read<HeartRateService>() as SimulatedHeartRateService;
 
   double _nowHour() => DateTime.now().hour.toDouble();
 
@@ -154,6 +158,11 @@ class _SimulatorPanelState extends State<_SimulatorPanel> {
                 icon: const Icon(Icons.link_off),
                 label: const Text('Simular desconexión'),
                 onPressed: () => _ble.simulateDisconnect(),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.heart_broken),
+                label: const Text('Simular caída del pulsómetro'),
+                onPressed: () => _hrm.simulateDisconnect(),
               ),
             ],
           ),

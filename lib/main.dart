@@ -19,6 +19,7 @@ import 'core/strava/strava_auth_service.dart';
 import 'core/strava/strava_api_service.dart';
 import 'features/device/device_provider.dart';
 import 'features/device/device_screen.dart';
+import 'features/device/heart_rate_provider.dart';
 import 'features/history/history_provider.dart';
 import 'features/history/history_screen.dart';
 import 'features/profile/profile_provider.dart';
@@ -63,7 +64,15 @@ class RowerApp extends StatelessWidget {
           create: (_) => db,
           dispose: (_, s) => s.close(),
         ),
+        Provider<HeartRateService>(
+          create: (_) {
+            hrm.autoConnect(); // reconecta al sensor recordado, si lo hay
+            return hrm;
+          },
+          dispose: (_, s) => s.dispose(),
+        ),
         ChangeNotifierProvider(create: (_) => DeviceProvider(ble)),
+        ChangeNotifierProvider(create: (_) => HeartRateProvider(hrm)),
         ChangeNotifierProvider(create: (_) => WorkoutProvider(ble, hrm, db)),
         ChangeNotifierProvider(create: (_) => RoutinesProvider(db)),
         ChangeNotifierProvider(create: (_) => HistoryProvider(db)),
