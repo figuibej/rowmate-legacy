@@ -23,6 +23,9 @@ class HeartRateProvider extends ChangeNotifier {
     _statusSub = _hrm.statusStream.listen((s) {
       _status = s;
       if (s == HrmStatus.connected) _error = null;
+      // El nombre elegido en la lista solo vale para ese intento; los
+      // reintentos automáticos muestran el sensor recordado.
+      if (s != HrmStatus.connecting) _connectingName = null;
       notifyListeners();
     });
     _bpmSub = _hrm.bpmStream.listen((b) {
@@ -56,24 +59,14 @@ class HeartRateProvider extends ChangeNotifier {
     _error = null;
     _scanResults = const [];
     notifyListeners();
-    try {
-      await _hrm.startScan();
-    } catch (e) {
-      _error = e;
-      notifyListeners();
-    }
+    await _run(() => _hrm.startScan());
   }
 
   Future<void> connect(BluetoothDevice device, {String? name}) async {
     _error = null;
     _connectingName = name;
     notifyListeners();
-    try {
-      await _hrm.connect(device);
-    } catch (e) {
-      _error = e;
-      notifyListeners();
-    }
+    await _run(() => _hrm.connect(device));
   }
 
   /// Reintenta con el sensor recordado (misma cadencia que al arrancar).
@@ -81,18 +74,41 @@ class HeartRateProvider extends ChangeNotifier {
     _error = null;
     _connectingName = null;
     notifyListeners();
-    await _hrm.autoConnect();
+    await _run(() => _hrm.autoConnect());
   }
 
-  Future<void> disconnect() => _hrm.disconnect();
+  Future<void> disconnect() async {
+    _error = null;
+    await _run(() => _hrm.disconnect());
+  }
 
   Future<void> forget() async {
-    await _hrm.forget();
-    notifyListeners();
+    _error = null;
+    await _run(() => _hrm.forget());
+    _notifyIfAlive();
   }
+
+  /// Ejecuta una acción del servicio y deja su excepción en [error].
+  /// Una conexión real puede tardar 15 s: si el provider ya fue descartado
+  /// no se notifica.
+  Future<void> _run(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (e) {
+      _error = e;
+      _notifyIfAlive();
+    }
+  }
+
+  void _notifyIfAlive() {
+    if (!_disposed) notifyListeners();
+  }
+
+  bool _disposed = false;
 
   @override
   void dispose() {
+    _disposed = true;
     _statusSub?.cancel();
     _bpmSub?.cancel();
     _devicesSub?.cancel();
