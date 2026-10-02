@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../shared/theme.dart';
 import 'series_tracker.dart';
 
 /// m:ss.d — tiempo de una vuelta.
@@ -22,18 +23,36 @@ String formatSplit(double seconds) {
 String formatMeters(int meters) =>
     '${NumberFormat('#,##0', 'es').format(meters)} m';
 
+// Mismo lenguaje visual que _GlassMetricCard (SPM / Split / Watts):
+// fondo negro 55 %, radio 14, etiqueta de color con tracking, valores w800.
 BoxDecoration _glass() => BoxDecoration(
       color: Colors.black.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
     );
 
-const _textStyle = TextStyle(
-  color: Colors.white,
-  fontSize: 13,
-  fontFeatures: [FontFeature.tabularFigures()],
-);
-const _mutedStyle = TextStyle(color: Colors.white54, fontSize: 12);
+TextStyle _labelStyle(Color color) => TextStyle(
+      color: color.withValues(alpha: 0.8),
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+    );
+
+TextStyle _valueStyle(Color color, double size) => TextStyle(
+      color: color,
+      fontSize: size,
+      fontWeight: FontWeight.w800,
+      height: 1.1,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+TextStyle _unitStyle(Color color) => TextStyle(
+      color: color.withValues(alpha: 0.55),
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+
+const _mutedStyle = TextStyle(color: Colors.white54, fontSize: 15);
 
 /// Hora actual (HH:mm). Tiene su propio timer: sigue andando en pausa.
 /// [framed] = false para usarla dentro de una barra que ya tiene fondo.
@@ -73,17 +92,18 @@ class _WallClockState extends State<WallClock> {
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.schedule, size: 14, color: Colors.white70),
+        const Icon(Icons.schedule, size: 16, color: Colors.white70),
         const SizedBox(width: 5),
         Text(
           DateFormat('HH:mm').format(_now),
-          style: _textStyle.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+          // Mismo tamaño que la cuenta regresiva de la barra de etapas
+          style: _valueStyle(Colors.white, 18),
         ),
       ],
     );
     if (!widget.framed) return content;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: _glass(),
       child: content,
     );
@@ -144,6 +164,7 @@ class _SeriesPanelsState extends State<SeriesPanels> {
       children: [
         _CollapsiblePanel(
           icon: Icons.timer_outlined,
+          color: MetricColors.split,
           collapsedLabel: '500 m',
           title: 'Parciales 500 m',
           expanded: _lapsExpanded,
@@ -158,6 +179,7 @@ class _SeriesPanelsState extends State<SeriesPanels> {
           const SizedBox(height: 8),
           _CollapsiblePanel(
             icon: Icons.history,
+            color: MetricColors.distance,
             collapsedLabel: 'Reps',
             title: 'Series anteriores',
             expanded: _repsExpanded,
@@ -177,6 +199,7 @@ class _SeriesPanelsState extends State<SeriesPanels> {
 class _CollapsiblePanel extends StatelessWidget {
   const _CollapsiblePanel({
     required this.icon,
+    required this.color,
     required this.collapsedLabel,
     required this.title,
     required this.expanded,
@@ -185,6 +208,7 @@ class _CollapsiblePanel extends StatelessWidget {
   });
 
   final IconData icon;
+  final Color color;
   final String collapsedLabel;
   final String title;
   final bool expanded;
@@ -197,59 +221,48 @@ class _CollapsiblePanel extends StatelessWidget {
       onTap: onToggle,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: expanded ? 180 : null,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        // Mismo ancho mínimo que la tarjeta grande de SPM que está encima
+        constraints: const BoxConstraints(minWidth: 130),
+        // 200: no invade la columna Split/Watts en teléfonos de 360 dp
+        width: expanded ? 200 : null,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: _glass(),
-        child: expanded
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Colapsado vive en una columna sin ancho acotado: sin Flexible ahí
+            if (expanded)
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 14, color: Colors.white70),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(title,
-                            style: _textStyle.copyWith(fontWeight: FontWeight.w700)),
-                      ),
-                      const Icon(Icons.expand_less, size: 16, color: Colors.white54),
-                    ],
+                  Icon(icon, size: 14, color: color.withValues(alpha: 0.8)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _labelStyle(color)),
                   ),
-                  const SizedBox(height: 4),
-                  child,
+                  const Icon(Icons.expand_less, size: 18, color: Colors.white54),
                 ],
               )
-            : Row(
+            else
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 14, color: Colors.white70),
-                  const SizedBox(width: 5),
-                  Text(collapsedLabel, style: _textStyle),
+                  Icon(icon, size: 14, color: color.withValues(alpha: 0.8)),
+                  const SizedBox(width: 4),
+                  Text(collapsedLabel, style: _labelStyle(color)),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.expand_more, size: 18, color: Colors.white54),
                 ],
               ),
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row(this.left, this.right, {this.dim = false});
-
-  final String left;
-  final String right;
-  final bool dim;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = dim ? _textStyle.copyWith(color: Colors.white60) : _textStyle;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        children: [
-          Expanded(child: Text(left, style: style)),
-          Text(right, style: style),
-        ],
+            if (expanded) ...[
+              const SizedBox(height: 6),
+              child,
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -264,22 +277,43 @@ class _LapsContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = tracker;
     final laps = t.laps;
-    final shown = laps.length > 4 ? laps.sublist(laps.length - 4) : laps;
+    // Las más recientes primero, para leerlas de un vistazo
+    final shown =
+        (laps.length > 4 ? laps.sublist(laps.length - 4) : laps).reversed;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!t.isWorkStep)
           const Text('Sin parciales en este paso', style: _mutedStyle)
         else ...[
+          // Vuelta en curso: valor grande, como las tarjetas de métricas
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(formatLapTime(t.currentLapSeconds),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _valueStyle(MetricColors.split, 30)),
+              ),
+              const SizedBox(width: 6),
+              Text('${t.currentLapMeters} m',
+                  style: _unitStyle(MetricColors.split)),
+            ],
+          ),
+          const SizedBox(height: 4),
           for (final lap in shown)
-            _Row('#${lap.number}', formatLapTime(lap.seconds)),
-          _Row('▸ ${t.currentLapMeters} m', formatLapTime(t.currentLapSeconds),
-              dim: true),
+            _MetricRow(
+              label: '#${lap.number}',
+              value: formatLapTime(lap.seconds),
+              valueColor: MetricColors.split,
+            ),
         ],
         if (t.inSeries) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text('Rep ${t.rep}/${t.repCount} · ${formatMeters(t.repMeters)}',
-              style: _mutedStyle),
+              style: _valueStyle(MetricColors.distance, 16)),
         ],
       ],
     );
@@ -300,12 +334,59 @@ class _RepsContent extends StatelessWidget {
     return Column(
       children: [
         for (final r in reps)
-          _Row(
-            'Rep ${r.rep}',
-            '${r.workSplitSeconds == null ? '—' : formatSplit(r.workSplitSeconds!)}'
-                ' · ${formatMeters(r.totalMeters)}',
+          _MetricRow(
+            label: 'Rep ${r.rep}',
+            value: r.workSplitSeconds == null
+                ? '—'
+                : formatSplit(r.workSplitSeconds!),
+            valueColor: MetricColors.split,
+            trailing: formatMeters(r.totalMeters),
           ),
       ],
+    );
+  }
+}
+
+/// Fila "etiqueta · valor grande · (dato secundario)" con el estilo de las tarjetas.
+class _MetricRow extends StatelessWidget {
+  const _MetricRow({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          SizedBox(
+            width: 52,
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600)),
+          ),
+          Expanded(
+            child: Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _valueStyle(valueColor, 22)),
+          ),
+          if (trailing != null)
+            Text(trailing!, style: _valueStyle(MetricColors.distance, 16)),
+        ],
+      ),
     );
   }
 }
