@@ -108,10 +108,14 @@ class HeartRateService {
 
 ### Escaneo
 
-- `FlutterBluePlus.startScan(withServices: [Guid('180D')], timeout: timeout)`.
-- Se suscribe a `FlutterBluePlus.scanResults`, publica solo los resultados cuyo
-  `advertisementData.serviceUuids` contiene `0x180D`, y **cancela la suscripción** al
-  terminar el escaneo.
+- `FlutterBluePlus.startScan(withServices: [Guid('180D')], timeout: timeout)`. El
+  filtro por servicio lo aplica el sistema operativo.
+- Se suscribe a `FlutterBluePlus.scanResults` **después** de que `startScan` devuelva
+  (ahí la librería ya vació la lista cacheada, que se reemite a cada listener nuevo; si
+  se suscribiera antes recibiría los resultados del escaneo anterior) y **cancela la
+  suscripción** al terminar el escaneo. No se filtra por `advertisementData.serviceUuids`
+  en el cliente: en iOS un servicio puede venir en los "overflow UUIDs" y no aparecer en
+  esa lista aunque el sistema lo haya aceptado.
 - `flutter_blue_plus` corta cualquier escaneo en curso al llamar a `startScan`. La
   pantalla no permite escanear pulsómetro mientras el remo está en `scanning` o
   `connecting`, ni escanear remo mientras el pulsómetro está en `scanning`.
@@ -229,12 +233,17 @@ reconectando, no encontrado, sensor desconocido, sensor incompatible, error al c
 
 ## Arreglo colateral en `BleService.startScan`
 
-Hoy registra un listener de `FlutterBluePlus.scanResults` en cada llamada y nunca lo
-cancela, y acepta cualquier resultado. Como `scanResults` es global, un escaneo de
-pulsómetro metería el reloj en la lista del remo. Cambios:
+Hoy registra un listener de `FlutterBluePlus.scanResults` en cada llamada, antes de
+`startScan`, y nunca lo cancela. Como `scanResults` es global y reemite la última lista,
+un escaneo de pulsómetro metería el reloj en la lista del remo. Cambios:
 
-- guardar la suscripción y cancelarla al terminar el escaneo (y en `stopScan`);
-- descartar resultados cuyo `advertisementData.serviceUuids` no contenga FTMS (`0x1826`).
+- suscribirse **después** de que `FlutterBluePlus.startScan` devuelva (la lista ya está
+  vacía);
+- guardar la suscripción y cancelarla al terminar el escaneo (y en `stopScan` /
+  `dispose`).
+
+No se filtra por UUID anunciado en el cliente, por el mismo motivo que en
+`HeartRateService` (overflow UUIDs en iOS).
 
 ## Simulador (`SIMULATOR=true`)
 
