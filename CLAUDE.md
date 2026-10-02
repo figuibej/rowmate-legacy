@@ -15,6 +15,7 @@ flutter run
 flutter run -d windows
 
 # Run with simulated rower (dev mode: separate DB, Strava uploads blocked)
+# Works on any platform; in VS Code use the "RowMate (simulador)" launch config.
 flutter run -d windows --dart-define=SIMULATOR=true
 
 # List available devices
@@ -38,7 +39,8 @@ Flutter app for monitoring a rowing machine (AMS-670B) via Bluetooth Low Energy.
 
 ```
 lib/
-├── core/           # Platform services: BLE, database, domain models
+├── core/           # Platform services: BLE, database, domain models, Strava
+│   └── dev/        # Dev-mode simulator (only compiled in with SIMULATOR=true)
 ├── features/       # One folder per screen (device, workout, routines, history)
 ├── shared/         # Theme and reusable widgets
 └── main.dart       # App entry point, Provider tree setup
@@ -55,7 +57,9 @@ lib/
 Each feature directory contains a `ChangeNotifier` provider and a screen widget:
 
 - **device/**: BLE scan results and connection state
-- **workout/**: Live workout tracking — phases (idle → active → paused → finished), routine step progression (time- or distance-based), 5-second telemetry sampling to `data_points`
+- **workout/**: Live workout tracking — phases (idle → active → paused → finished), routine step progression (time- or distance-based), 5-second telemetry sampling to `data_points`. Starting a workout pushes the fullscreen [ImmersiveWorkoutPage](lib/features/workout/immersive_workout_screen.dart) (outdoor scene + glass metric cards); the old `_FullscreenWorkoutPage` in `workout_screen.dart` is no longer navigated to.
+  - **[SeriesTracker](lib/features/workout/series_tracker.dart)**: pure class fed once per second from `WorkoutProvider._tick` (before `_checkStepCompletion`). Computes 500 m laps inside `work` steps (time interpolated between readings, pauses excluded) and per-repetition summaries for the current series (last 3: work split + total meters). It sanitizes monitor distance: deltas that are negative or > 10 m/s are ignored (FTMS packets without the distance flag parse as 0, monitors reset, rowing while paused). In-memory only, nothing is persisted. `WorkoutProvider.resume()` calls `series.rebase()`.
+  - **[series_panels.dart](lib/features/workout/series_panels.dart)**: `WallClock` (HH:mm, shown in the top bars) and `SeriesPanels` (collapsible "500 m" and "Reps" panels under the SPM card, only for routines). Collapsed by default; expanded state persisted in `SharedPreferences` (`immersive.lapsExpanded`, `immersive.repsExpanded`). Styled like `_GlassMetricCard`.
 - **routines/**: CRUD for `Routine` and `IntervalStep` records
 - **history/**: Read-only list of completed `WorkoutSession` records
 
@@ -68,7 +72,7 @@ Telemetry is buffered every 5 seconds during active workouts and batch-inserted 
 ### Key Models
 
 - **RowingData**: Immutable real-time snapshot with `copyWith`.
-- **Routine / IntervalStep**: Training plan; steps are typed (warmup/work/rest/cooldown) and can be duration- or distance-based with optional watt/SPM targets.
+- **Routine / IntervalStep**: Training plan; steps are typed (warmup/work/rest/cooldown) and can be duration- or distance-based with optional watt/SPM targets. Steps sharing a `groupId` form a series repeated `groupRepeatCount` times. `Routine.flattenedSteps` expands series (applying progressions); `Routine.flattenedStepPositions` is index-aligned with it and gives each step's `StepPosition` `(groupId, rep, repCount)`.
 - **WorkoutSession / DataPoint**: Persisted session with nested telemetry samples.
 
 ### UI Conventions
@@ -78,7 +82,20 @@ Telemetry is buffered every 5 seconds during active workouts and batch-inserted 
 - Step-type color scheme: work = `#EF476F`, rest = `#06D6A0`, warmup = `#FFD166`, cooldown = `#118AB2`.
 - Screen always-on during workouts via `wakelock_plus`.
 
-### Platform Permissions
+### Dev Mode: Simulated Rower
+
+Lets you develop and test the UI without hardware. Enabled at compile time with `--dart-define=SIMULATOR=true`; see the spec in [docs/superpowers/specs/2026-10-01-dev-simulator-design.md](docs/superpowers/specs/2026-10-01-dev-simulator-design.md).
+
+- **Flag**: `kSimulator` in [dev_config.dart](lib/core/dev/dev_config.dart) is a `const bool.fromEnvironment('SIMULATOR')`. Without the define it is `false`, so every `if (kSimulator)` branch and the simulator classes are tree-shaken out of normal/release builds. No build script (`codemagic.yaml`, `.github/workflows`, gradle, xcconfig) passes the define — keep it that way.
+- **[SimulatedBleService](lib/core/bluetooth/simulated_ble_service.dart)** `implements BleService` and is swapped in by `main.dart`; providers and screens are unaware of it. It auto-"connects" (emits `connected` / adapter `on`) in a microtask when the first listener subscribes, because `DeviceProvider` only listens to the streams and never reads the initial `status`. Emits one `RowingData` per second; `startScan`/`connect` reconnect, `simulateDisconnect()` drops and reconnects after 3 s. `rawBytesStream`/`devicesStream` never emit (so the `DeviceProvider` watchdog never fires).
+- **[RowingSimulator](lib/core/dev/rowing_simulator.dart)**: pure physics (`tick()` = 1 s). Concept2 formulas: pace = `500·(2.80/W)^(1/3)`, kcal/s = `(W·4·0.8604 + 300)/3600`. Controls: `targetWatts` (30–500), `targetSpm` (14–40), `rowing`; `noise: false` for deterministic tests.
+- **[SimulatorOverlay](lib/core/dev/simulator_overlay.dart)**: "SIMULADOR" banner + 🛠 control panel (presets Suave/Medio/Fuerte, ± watts/SPM, "Remando" switch, "Simular desconexión"). Mounted via `MaterialApp.builder`, i.e. **above the Navigator, where there is no `Overlay`**: do not use `Tooltip`/`tooltip:` params, `Slider`, bottom sheets, dropdowns or popup menus in it. It reads the service with `context.read<BleService>() as SimulatedBleService` on every use (hot reload creates a new service in `RowerApp.build`, but `Provider` keeps the original).
+- **Separate database**: `DatabaseService` opens `rower_app_dev.db` instead of `rower_app.db`.
+- **Nothing is uploaded to Strava**: `StravaApiService.uploadActivity` returns `null` before any request (all upload paths go through it), and the workout UIs (`_triggerStravaUpload` + routine-completed dialogs in both `workout_screen.dart` and `immersive_workout_screen.dart`) skip upload prompts. **Any new Strava write or upload prompt must also be guarded with `kSimulator`.** Strava login/import still work.
+
+### Platform Notes
 
 - **Android**: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` (API 31+), legacy Bluetooth + location for older APIs, `WAKE_LOCK`. `minSdkVersion` 21.
-- **iOS**: `NSBluetoothAlwaysUsageDescription` in Info.plist; `bluetooth-central` background mode enabled.
+- **iOS**: `NSBluetoothAlwaysUsageDescription` in Info.plist; `bluetooth-central` background mode enabled. Deployment target 15.0.
+- **Windows**: needs Visual Studio with the "Desktop development with C++" workload and Windows Developer Mode (Flutter plugins use symlinks). SQLite runs through `sqflite_common_ffi`, initialized in `main()` for Windows/Linux. BLE uses `flutter_blue_plus` 2.x, whose federated Windows implementation is `flutter_blue_plus_winrt`.
+- **flutter_blue_plus license**: 2.x requires a `license:` argument on `connect()`; [BleService](lib/core/bluetooth/ble_service.dart) uses `License.nonprofit` (`_fbpLicense`). Commercial use by a for-profit organization requires a paid license (`License.commercial`).

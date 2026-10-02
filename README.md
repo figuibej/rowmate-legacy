@@ -49,6 +49,9 @@ Parsed metrics: **Split /500m · SPM · Watts · Distance · Calories · Heart R
 - 📈 **Session history** — with detailed telemetry and per-step breakdown
 - 🔒 **Screen always-on** during workouts
 - 🔄 **Strava integration** — upload sessions, sync activities, track sync status
+- 🌄 **Immersive workout screen** — outdoor scene with an animated rower and glass metric cards
+- ⏱️ **500 m splits per series** — live 500 m laps in each work step, meters per repetition, and the last 3 repetitions for comparison (collapsible panels), plus the current time
+- 🧪 **Simulator mode** — develop and test the UI without a rowing machine (see [Development without a rower](#development-without-a-rower))
 
 ---
 
@@ -70,7 +73,9 @@ lib/
 ├── core/
 │   ├── bluetooth/
 │   │   ├── ble_service.dart       # BLE connection + subscriptions
+│   │   ├── simulated_ble_service.dart # Fake rower for simulator mode
 │   │   └── ftms_parser.dart       # 0x2AD2 characteristic parser
+│   ├── dev/                       # Simulator mode: flag, physics, control panel
 │   ├── database/
 │   │   └── database_service.dart  # SQLite (sqflite)
 │   ├── models/
@@ -101,8 +106,8 @@ lib/
 
 ### Requirements
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) ≥ 3.3.0
-- Android (API 21+), iOS device, or macOS
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) ≥ 3.38
+- Android (API 21+), iOS device (15.0+), macOS, or Windows
 
 ### Clone and install
 
@@ -121,9 +126,33 @@ flutter run
 # macOS desktop
 flutter run -d macos
 
+# Windows desktop
+flutter run -d windows
+
 # List available devices
 flutter devices
 ```
+
+### Development without a rower
+
+Simulator mode replaces Bluetooth with a simulated FTMS rower, so you can work on the UI on any platform without hardware:
+
+```bash
+flutter run -d windows --dart-define=SIMULATOR=true
+```
+
+In VS Code, pick the **RowMate (simulador)** launch configuration.
+
+- The app starts already connected to "Remo simulado", which sends realistic data every second (split derived from watts with the Concept2 formula, plus distance, strokes, calories and heart rate).
+- An orange **SIMULADOR** banner is shown. The 🛠 button opens a control panel with:
+  - intensity presets;
+  - ± watts / SPM;
+  - a "Remando" (rowing) switch to stop and resume rowing;
+  - a "Simular desconexión" button to test a dropped connection.
+- Sessions are saved to a separate database (`rower_app_dev.db`), so test data never mixes with your real history.
+- Nothing is ever uploaded to Strava in this mode.
+
+The flag is a compile-time constant. Builds without `--dart-define=SIMULATOR=true`, including every release build, don't include the simulator at all.
 
 ---
 
@@ -182,6 +211,11 @@ const stravaClientSecret = 'YOUR_SECRET';  // paste your secret here
 
 ### macOS
 - Works out of the box, no extra configuration needed
+
+### Windows
+- Requires Visual Studio with the **Desktop development with C++** workload
+- Enable **Developer Mode** in Windows settings: Flutter plugins need symlink support
+- Bluetooth via `flutter_blue_plus_winrt`; SQLite via `sqflite_common_ffi`
 
 ---
 
