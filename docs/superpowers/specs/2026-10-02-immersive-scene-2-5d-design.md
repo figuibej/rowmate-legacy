@@ -145,7 +145,7 @@ Por píxel:
 8. Niebla: `color = mix(color, uFog, smoothstep(80, 400, z))`.
 9. Salida con alpha 1.
 
-`uWakeStrength` = `clamp(speed / 4, 0, 1)`.
+`uWakeStrength` = `clamp(speed / 4, 0, 1)`. `uBoatZ` es la `z` de la **popa** (`boatZ − 4.2`), que es donde nace la estela.
 
 `WaterShader.load()` devuelve `Future<FragmentProgram?>`: usa `FragmentProgram.fromAsset('shaders/water.frag')`, cachea el resultado, y ante cualquier error devuelve `null` y lo registra con `debugPrint`. `WaterPainter` con programa `null` pinta el fallback: degradé `waterFar → waterNear` y 10 líneas de brillo horizontales con opacidad por `h`, sin estela. La app es usable siempre.
 
