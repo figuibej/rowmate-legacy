@@ -197,6 +197,7 @@ class HeartRateService {
     await _loadRemembered();
     if (_rememberedId == null) return;
     if (_status != HrmStatus.disconnected) return;
+    if (_scanDone != null) return; // un escaneo del usuario tiene prioridad
     _dropLoop.cancel();
     _startupLoop.start();
     _reemitStatus(); // isRetrying cambió
@@ -389,7 +390,10 @@ class HeartRateService {
   Future<void> _loadRemembered() async {
     final prefs = await SharedPreferences.getInstance();
     _rememberedId = prefs.getString(prefDeviceId);
-    _rememberedName = prefs.getString(prefDeviceName);
+    // Sin id no hay sensor: un nombre huérfano (forget() cruzado con
+    // _remember()) no debe heredarse al próximo sensor.
+    _rememberedName =
+        _rememberedId == null ? null : prefs.getString(prefDeviceName);
   }
 
   // ── Estado ───────────────────────────────────────────────────────────────
