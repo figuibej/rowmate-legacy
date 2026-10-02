@@ -29,6 +29,18 @@ void main() {
     expect(p.skyHorizon, isNot(TimeOfDay.paletteFor(20).skyHorizon));
   });
 
+  test('de 22 h a 4 h la paleta es noche cerrada, sin falso amanecer', () {
+    expect(TimeOfDay.paletteFor(0).ambient, 0.35);
+    expect(TimeOfDay.paletteFor(3).ambient, 0.35);
+  });
+
+  test('a las 19 h sigue el atardecer y a las 20 h ya sale la luna', () {
+    expect(TimeOfDay.isNight(19), isFalse);
+    expect(TimeOfDay.isNight(20), isTrue);
+    expect(TimeOfDay.isNight(5), isFalse);
+    expect(TimeOfDay.lightFor(5, cam).isMoon, isFalse);
+  });
+
   test('la paleta es continua a medianoche y al amanecer', () {
     expect(TimeOfDay.paletteFor(23.99).ambient, closeTo(TimeOfDay.paletteFor(0).ambient, 0.01));
     expect(TimeOfDay.paletteFor(4.99).ambient, closeTo(TimeOfDay.paletteFor(5).ambient, 0.01));

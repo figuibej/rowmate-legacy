@@ -20,6 +20,10 @@ class CoastEnvironment extends Environment {
   @override
   Color tintWater(Color base) => Color.lerp(base, const Color(0xFF0E6B7A), 0.3)!;
 
+  /// Orilla despejada: pocos objetos por segmento.
+  @override
+  int get maxVisibleProps => 60;
+
   @override
   List<ShoreProp> generate(int k, math.Random rnd) {
     final out = <ShoreProp>[];
@@ -48,14 +52,15 @@ class CoastEnvironment extends Environment {
       double distance, double time) {
     final w = size.width;
     final hMax = size.height * 0.08;
-    // Acantilado lejano a la izquierda que se desvanece hacia el centro
-    final shift = (distance * 0.003 * 60) % (w * 0.3);
+    // Acantilado lejano a la izquierda que se desvanece hacia el centro; la
+    // forma se modula con una fase continua en vez de desplazarse (sin saltos)
+    final phase = distance * 0.002;
     final path = Path()..moveTo(0, cam.horizonY);
     const steps = 20;
     for (var i = 0; i <= steps; i++) {
-      final x = w * 0.35 * i / steps - shift * 0.2;
+      final x = w * 0.35 * i / steps;
       final fade = 1 - i / steps;
-      final h = hMax * fade * (0.6 + 0.4 * math.sin(i * 1.7 + 0.5));
+      final h = hMax * fade * (0.6 + 0.4 * math.sin(i * 1.7 + 0.5 + phase));
       path.lineTo(x, cam.horizonY - h);
     }
     path

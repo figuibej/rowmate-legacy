@@ -8,7 +8,7 @@ void main() {
     expect(StrokeCycle.back(0), 0);
     expect(StrokeCycle.bladeInWater(0), isTrue);
     expect(StrokeCycle.oarSweep(0), lessThan(0));
-    expect(StrokeCycle.torsoLean(0), greaterThan(0)); // inclinado a la proa
+    expect(StrokeCycle.torsoLean(0), greaterThan(0)); // inclinado hacia la cámara (popa)
   });
 
   test('finish: piernas extendidas, brazos flexionados, pala sale', () {

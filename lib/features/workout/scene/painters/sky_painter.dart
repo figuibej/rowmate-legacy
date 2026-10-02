@@ -55,12 +55,14 @@ class SkyPainter extends CustomPainter {
   void _stars(Canvas canvas, double w, double hz) {
     final rnd = math.Random(42);
     final paint = Paint();
+    // Las estrellas aparecen a medida que oscurece (ambient 1 → 0.35)
+    final darkness = ((1 - palette.ambient) / 0.65).clamp(0.0, 1.0);
     for (var i = 0; i < 80; i++) {
       final x = rnd.nextDouble() * w;
       final y = rnd.nextDouble() * hz * 0.85;
       final r = 0.6 + rnd.nextDouble();
       final twinkle = 0.5 + 0.5 * math.sin(time * 2 + i);
-      paint.color = Colors.white.withValues(alpha: 0.4 + 0.5 * twinkle);
+      paint.color = Colors.white.withValues(alpha: (0.4 + 0.5 * twinkle) * darkness);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
   }

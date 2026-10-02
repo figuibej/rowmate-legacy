@@ -13,9 +13,11 @@ void main() {
 
   test('la velocidad sale del split y se alcanza en unos segundos', () {
     final s = SceneState();
-    expect(s.targetSpeedFor(pace500m: 107, isActive: true), closeTo(4.67, 0.01));
-    expect(s.targetSpeedFor(pace500m: 107, isActive: false), 0);
-    expect(s.targetSpeedFor(pace500m: 0, isActive: true), 0);
+    expect(s.targetSpeedFor(pace500m: 107, spm: 24, isActive: true), closeTo(4.67, 0.01));
+    expect(s.targetSpeedFor(pace500m: 107, spm: 24, isActive: false), 0);
+    expect(s.targetSpeedFor(pace500m: 0, spm: 24, isActive: true), 0);
+    // El parser sustituye el ritmo instantáneo por el medio: sin paladas no hay avance
+    expect(s.targetSpeedFor(pace500m: 107, spm: 0, isActive: true), 0);
     run(s, 8);
     expect(s.speed, closeTo(4.67, 0.05));
     expect(s.distance, greaterThan(25));
@@ -39,6 +41,20 @@ void main() {
     run(s, 1.5, spm: 24);
     // Un ciclo completo: por redondeo puede quedar en 0.0 o en 0.999…
     expect(s.strokePhase, anyOf(closeTo(0.0, 1e-6), closeTo(1.0, 1e-6)));
+  });
+
+  test('sin paladas la fase termina el ciclo y queda en el catch', () {
+    final s = SceneState();
+    run(s, 0.5, spm: 24);
+    expect(s.strokePhase, closeTo(0.2, 1e-6));
+    run(s, 6, spm: 0, pace: 107);
+    expect(s.strokePhase, 0.0);
+    expect(s.speed, lessThan(0.1));
+  });
+
+  test('shaderDistance se acota a 4096 m', () {
+    final s = SceneState()..distance = 5000;
+    expect(s.shaderDistance, 904);
   });
 
   test('en pausa no avanza la palada ni la velocidad', () {

@@ -15,6 +15,10 @@ class RegattaEnvironment extends Environment {
   @override
   double get waveScale => 1.5;
 
+  /// 20 boyas por segmento × 8 segmentos visibles: hace falta más margen.
+  @override
+  int get maxVisibleProps => 200;
+
   @override
   List<ShoreProp> generate(int k, math.Random rnd) {
     final out = <ShoreProp>[];
@@ -60,7 +64,7 @@ class RegattaEnvironment extends Environment {
             ..lineTo(fx + 6, cam.horizonY - hMax * 0.55 + wave)
             ..lineTo(fx, cam.horizonY - hMax * 0.5)
             ..close(),
-          Paint()..color = flagColors[i],
+          Paint()..color = horizonColor(p, flagColors[i], 0.5),
         );
       }
     }

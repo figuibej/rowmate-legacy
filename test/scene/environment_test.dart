@@ -27,9 +27,9 @@ void main() {
       }
     });
 
-    test('$id: visibleProps ordena de lejos a cerca y acota a 40', () {
+    test('$id: visibleProps ordena de lejos a cerca y respeta el máximo', () {
       final props = env.visibleProps(1234);
-      expect(props.length, lessThanOrEqualTo(Environment.maxVisibleProps));
+      expect(props.length, lessThanOrEqualTo(env.maxVisibleProps));
       for (var i = 1; i < props.length; i++) {
         expect(props[i].z, lessThanOrEqualTo(props[i - 1].z));
       }
@@ -49,6 +49,12 @@ void main() {
       ..sort();
     expect(buoys.length, 5);
     expect(buoys[1] - buoys[0], 10);
+  });
+
+  test('en la regata los hitos lejanos se ven aunque haya muchas boyas', () {
+    final props = Environment.of(EnvironmentId.regatta).visibleProps(0);
+    const landmarks = {PropKind.grandstand, PropKind.finishTower, PropKind.distanceMarker};
+    expect(props.any((p) => landmarks.contains(p.kind) && p.z > 150), isTrue);
   });
 
   test('el río urbano tiene un puente cada 800 m', () {

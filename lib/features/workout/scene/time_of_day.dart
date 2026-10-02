@@ -50,7 +50,9 @@ class TimeOfDay {
   TimeOfDay._();
 
   static double sunElevation(double hour) => math.sin((hour - 6) / 12 * math.pi);
-  static bool isNight(double hour) => sunElevation(hour) <= -0.1;
+  /// Luna en vez de sol recién cuando el cielo dejó de ser atardecer
+  /// (elevación ≤ −0.4: ≈19:35 a ≈4:25).
+  static bool isNight(double hour) => sunElevation(hour) <= -0.4;
 
   static SceneLight lightFor(double hour, SceneCamera cam) {
     final night = isNight(hour);
@@ -95,9 +97,11 @@ class TimeOfDay {
     sunColor: Color(0xFFE6EEFF), sunGlow: Color(0xFFA6B8FF),
     fog: Color(0xFF0F1730), ambient: 0.35);
 
-  // Keyframes cíclicos: 22 h → 5 h del día siguiente (29)
+  // Keyframes cíclicos: 22 h → 5 h del día siguiente (29). La noche se mantiene
+  // cerrada hasta las 4 h (28) para que la medianoche no sea un falso amanecer.
   static const _keys = <(double, ScenePalette)>[
-    (5, _dawn), (7, _morning), (12, _noon), (18, _sunset), (20, _dusk), (22, _night), (29, _dawn),
+    (5, _dawn), (7, _morning), (12, _noon), (18, _sunset), (20, _dusk), (22, _night),
+    (28, _night), (29, _dawn),
   ];
 
   static ScenePalette paletteFor(double hour) {

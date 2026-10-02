@@ -44,7 +44,7 @@ class WaterPainter extends CustomPainter {
       camera.horizonY,
       camera.focal,
       SceneCamera.camHeight,
-      state.distance,
+      state.shaderDistance,
       state.time,
       environment.waveAmplitude,
       environment.waveScale,

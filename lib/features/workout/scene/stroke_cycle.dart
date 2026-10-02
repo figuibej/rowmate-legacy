@@ -29,7 +29,7 @@ class StrokeCycle {
     return 1 - _ramp(p, 0.40, 0.60);
   }
 
-  /// Inclinación del tronco en radianes (+ hacia la proa).
+  /// Inclinación del tronco (rad): + hacia la popa, es decir hacia la cámara.
   static double torsoLean(double p) =>
       _lerp(25 * math.pi / 180, -20 * math.pi / 180, back(p));
 
