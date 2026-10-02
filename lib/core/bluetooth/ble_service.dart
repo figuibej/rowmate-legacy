@@ -19,6 +19,7 @@ class BleService {
   StreamSubscription<List<int>>? _notifySub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
   StreamSubscription<BluetoothAdapterState>? _adapterSub;
+  StreamSubscription<List<ScanResult>>? _scanSub;
   Timer? _keepAliveTimer;
   Timer? _reconnectTimer;
   bool _isDisconnecting = false; // evita reconexión durante desconexión manual/watchdog
@@ -84,19 +85,27 @@ class BleService {
     _setStatus(BleStatus.scanning);
     final found = <String, ScanResult>{};
 
-    FlutterBluePlus.scanResults.listen((results) {
-      for (final r in results) {
-        found[r.device.remoteId.str] = r;
-      }
-      _devicesController.add(found.values.toList());
-    });
 
-    await FlutterBluePlus.startScan(
-      withServices: [Guid(FtmsParser.ftmsServiceUuid)],
-      timeout: timeout,
-    );
-
-    await Future.delayed(timeout);
+    try {
+      await FlutterBluePlus.startScan(
+        withServices: [Guid(FtmsParser.ftmsServiceUuid)],
+        timeout: timeout,
+      );
+      // Suscribirse DESPUÉS de startScan: la librería ya vació la lista cacheada
+      // (que reemite a cada listener nuevo). Antes recibiríamos resultados del
+      // escaneo anterior, por ejemplo el del pulsómetro.
+      await _scanSub?.cancel();
+      _scanSub = FlutterBluePlus.scanResults.listen((results) {
+        for (final r in results) {
+          found[r.device.remoteId.str] = r;
+        }
+        _devicesController.add(found.values.toList());
+      });
+      await Future.delayed(timeout);
+    } finally {
+      await _scanSub?.cancel();
+      _scanSub = null;
+    }
     // Solo volver a disconnected si seguimos en scanning.
     // Si el usuario ya conectó durante el scan, no sobreescribir el estado.
     if (_status == BleStatus.scanning) {
@@ -106,6 +115,8 @@ class BleService {
 
   Future<void> stopScan() async {
     await FlutterBluePlus.stopScan();
+    await _scanSub?.cancel();
+    _scanSub = null;
     _setStatus(BleStatus.disconnected);
   }
 
@@ -312,6 +323,7 @@ class BleService {
 
   void dispose() {
     _cleanup();
+    _scanSub?.cancel();
     _adapterSub?.cancel();
     _statusController.close();
     _dataController.close();
