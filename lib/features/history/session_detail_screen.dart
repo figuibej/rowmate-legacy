@@ -545,11 +545,16 @@ class _StatChip extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: color ?? Colors.white)),
+          // Seis columnas en 360 dp: "137/150" o "12345m" no entran a 14 px.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value,
+                maxLines: 1,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: color ?? Colors.white)),
+          ),
           Text(label,
               style: const TextStyle(fontSize: 10, color: Colors.white38)),
         ],
