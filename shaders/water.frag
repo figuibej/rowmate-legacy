@@ -75,9 +75,9 @@ void main() {
   col = mix(col, uSkyHorizon, fres * 0.6);
 
   // Brillo del sol/luna: columna bajo el astro, solo en las crestas
-  float colW = 40.0 + z * 6.0;
+  float colW = 25.0 + z * 4.0;
   float dxs = (px.x - uSunX) / colW;
-  float column = exp(-dxs * dxs);
+  float column = exp(-dxs * dxs) * 0.6;
   float crest = smoothstep(0.3, 0.9, h * 0.5 + 0.5 - abs(nx + nz) * 0.1);
   // Destellos suaves (sin celdas visibles), más finos cerca de la cámara
   float sparkle = smoothstep(0.45, 0.95, vnoise(vec2(x, zw) * (3.0 + 12.0 / z) + uTime * 0.8));

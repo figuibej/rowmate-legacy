@@ -104,11 +104,11 @@ class BoatPainter extends CustomPainter {
       if (o == null) continue;
       final s = camera.scaleAt(relZ);
       final t = pd.age / SceneState.puddleLife;
-      final r = (0.3 + 0.9 * t) * s;
+      final r = (0.3 + 0.6 * t) * s;
       c.drawOval(
         Rect.fromCenter(center: o, width: r * 2, height: r * 0.7),
         Paint()
-          ..color = Colors.white.withValues(alpha: (1 - t) * 0.45)
+          ..color = Colors.white.withValues(alpha: (1 - t) * 0.3)
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(1, 0.06 * s),
       );
@@ -116,14 +116,17 @@ class BoatPainter extends CustomPainter {
   }
 
   void _shadow(Canvas c) {
-    final ox = light.position.dx < camera.centerX ? 0.7 : -0.7;
-    final a = camera.project(ox, 0, bowZ);
-    final b = camera.project(ox, 0, sternZ);
+    // Sombra sutil pegada al casco, del lado opuesto al sol
+    final ox = light.position.dx < camera.centerX ? 0.35 : -0.35;
+    final a = camera.project(ox, 0, bowZ - 1.0);
+    final b = camera.project(ox, 0, sternZ + 0.5);
     if (a == null || b == null) return;
-    final w = 0.9 * camera.scaleAt(SceneCamera.boatZ);
+    final w = 0.5 * camera.scaleAt(SceneCamera.boatZ);
     c.drawOval(
       Rect.fromLTRB(math.min(a.dx, b.dx) - w / 2, a.dy, math.max(a.dx, b.dx) + w / 2, b.dy),
-      Paint()..color = Colors.black.withValues(alpha: 0.22 * palette.ambient),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.10 * palette.ambient)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
   }
 
