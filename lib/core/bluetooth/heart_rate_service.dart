@@ -126,10 +126,17 @@ class HeartRateService {
         // Suscribirse DESPUÉS de startScan: la librería ya vació la lista cacheada
         // (que reemite a cada listener nuevo). Antes recibiríamos el escaneo anterior.
         await _scanSub?.cancel();
+        debugPrint('[HRM] Escaneando sensores 0x180D durante ${timeout.inSeconds}s');
         _scanSub = sub = FlutterBluePlus.scanResults.listen(
           (results) {
             for (final r in results) {
-              found[r.device.remoteId.str] = r;
+              final id = r.device.remoteId.str;
+              if (!found.containsKey(id)) {
+                // Diagnóstico: qué anuncia cada sensor que pasa el filtro del sistema.
+                debugPrint('[HRM] Encontrado $id "${r.advertisementData.advName}" '
+                    'rssi=${r.rssi} uuids=${r.advertisementData.serviceUuids}');
+              }
+              found[id] = r;
             }
             if (!_devicesController.isClosed) _devicesController.add(found.values.toList());
           },
