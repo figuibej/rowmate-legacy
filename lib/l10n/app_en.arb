@@ -20,6 +20,32 @@
   "deviceBtDenied": "Bluetooth permission denied",
   "deviceBtDeniedHint": "Enable Bluetooth permission in\nSettings > Privacy > Bluetooth",
   "deviceBtEnable": "Enable Bluetooth",
+  "hrmTitle": "Heart rate sensor",
+  "hrmNoSensor": "No sensor",
+  "hrmWatchHint": "A smartwatch needs an app that broadcasts heart rate over Bluetooth (e.g. Heart for Bluetooth on Wear OS).",
+  "hrmSearch": "Search",
+  "hrmSearchOther": "Search another",
+  "hrmSearching": "Searching sensors…",
+  "hrmConnectingTo": "Connecting to {name}…",
+  "@hrmConnectingTo": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "hrmConnect": "Connect",
+  "hrmDisconnect": "Disconnect",
+  "hrmForget": "Forget",
+  "hrmReconnecting": "reconnecting…",
+  "hrmNotFound": "not found",
+  "hrmUnknownSensor": "Unknown sensor",
+  "hrmIncompatible": "Not a compatible heart rate sensor (no Heart Rate service)",
+  "hrmConnectError": "Connection error: {error}",
+  "@hrmConnectError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "hrmBpm": "bpm",
 
   "workoutTitle": "Workout",
   "workoutFree": "Free workout",
@@ -77,6 +103,7 @@
   "historyStatDistance": "Distance",
   "historyStatWatts": "Watts",
   "historyStatCalories": "kcal",
+  "historyStatHeartRate": "HR",
 
   "sessionNoTelemetry": "No telemetry data",
   "sessionSummary": "Summary",

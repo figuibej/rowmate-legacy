@@ -67,6 +67,60 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deviceBtEnable => 'Activar Bluetooth';
 
   @override
+  String get hrmTitle => 'Pulsómetro';
+
+  @override
+  String get hrmNoSensor => 'Sin sensor';
+
+  @override
+  String get hrmWatchHint =>
+      'Un smartwatch necesita una app que transmita el pulso por Bluetooth (p. ej. Heart for Bluetooth en Wear OS).';
+
+  @override
+  String get hrmSearch => 'Buscar';
+
+  @override
+  String get hrmSearchOther => 'Buscar otro';
+
+  @override
+  String get hrmSearching => 'Buscando sensores…';
+
+  @override
+  String hrmConnectingTo(String name) {
+    return 'Conectando a $name…';
+  }
+
+  @override
+  String get hrmConnect => 'Conectar';
+
+  @override
+  String get hrmDisconnect => 'Desconectar';
+
+  @override
+  String get hrmForget => 'Olvidar';
+
+  @override
+  String get hrmReconnecting => 'reconectando…';
+
+  @override
+  String get hrmNotFound => 'no encontrado';
+
+  @override
+  String get hrmUnknownSensor => 'Sensor desconocido';
+
+  @override
+  String get hrmIncompatible =>
+      'No es un pulsómetro compatible (sin servicio Heart Rate)';
+
+  @override
+  String hrmConnectError(String error) {
+    return 'Error al conectar: $error';
+  }
+
+  @override
+  String get hrmBpm => 'bpm';
+
+  @override
   String get workoutTitle => 'Entrenamiento';
 
   @override
@@ -200,6 +254,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyStatCalories => 'kcal';
+
+  @override
+  String get historyStatHeartRate => 'Pulso';
 
   @override
   String get sessionNoTelemetry => 'No hay datos de telemetría';

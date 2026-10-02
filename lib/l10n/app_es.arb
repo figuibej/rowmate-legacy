@@ -20,6 +20,32 @@
   "deviceBtDenied": "Permiso de Bluetooth denegado",
   "deviceBtDeniedHint": "Habilitá el permiso de Bluetooth en\nAjustes > Privacidad > Bluetooth",
   "deviceBtEnable": "Activar Bluetooth",
+  "hrmTitle": "Pulsómetro",
+  "hrmNoSensor": "Sin sensor",
+  "hrmWatchHint": "Un smartwatch necesita una app que transmita el pulso por Bluetooth (p. ej. Heart for Bluetooth en Wear OS).",
+  "hrmSearch": "Buscar",
+  "hrmSearchOther": "Buscar otro",
+  "hrmSearching": "Buscando sensores…",
+  "hrmConnectingTo": "Conectando a {name}…",
+  "@hrmConnectingTo": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "hrmConnect": "Conectar",
+  "hrmDisconnect": "Desconectar",
+  "hrmForget": "Olvidar",
+  "hrmReconnecting": "reconectando…",
+  "hrmNotFound": "no encontrado",
+  "hrmUnknownSensor": "Sensor desconocido",
+  "hrmIncompatible": "No es un pulsómetro compatible (sin servicio Heart Rate)",
+  "hrmConnectError": "Error al conectar: {error}",
+  "@hrmConnectError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "hrmBpm": "bpm",
 
   "workoutTitle": "Entrenamiento",
   "workoutFree": "Entrenamiento libre",
@@ -77,6 +103,7 @@
   "historyStatDistance": "Distancia",
   "historyStatWatts": "Vatios",
   "historyStatCalories": "kcal",
+  "historyStatHeartRate": "Pulso",
 
   "sessionNoTelemetry": "No hay datos de telemetría",
   "sessionSummary": "Resumen",

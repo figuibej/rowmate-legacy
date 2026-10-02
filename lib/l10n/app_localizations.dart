@@ -206,6 +206,102 @@ abstract class AppLocalizations {
   /// **'Enable Bluetooth'**
   String get deviceBtEnable;
 
+  /// No description provided for @hrmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate sensor'**
+  String get hrmTitle;
+
+  /// No description provided for @hrmNoSensor.
+  ///
+  /// In en, this message translates to:
+  /// **'No sensor'**
+  String get hrmNoSensor;
+
+  /// No description provided for @hrmWatchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A smartwatch needs an app that broadcasts heart rate over Bluetooth (e.g. Heart for Bluetooth on Wear OS).'**
+  String get hrmWatchHint;
+
+  /// No description provided for @hrmSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get hrmSearch;
+
+  /// No description provided for @hrmSearchOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Search another'**
+  String get hrmSearchOther;
+
+  /// No description provided for @hrmSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching sensors…'**
+  String get hrmSearching;
+
+  /// No description provided for @hrmConnectingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to {name}…'**
+  String hrmConnectingTo(String name);
+
+  /// No description provided for @hrmConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get hrmConnect;
+
+  /// No description provided for @hrmDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get hrmDisconnect;
+
+  /// No description provided for @hrmForget.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get hrmForget;
+
+  /// No description provided for @hrmReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'reconnecting…'**
+  String get hrmReconnecting;
+
+  /// No description provided for @hrmNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'not found'**
+  String get hrmNotFound;
+
+  /// No description provided for @hrmUnknownSensor.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown sensor'**
+  String get hrmUnknownSensor;
+
+  /// No description provided for @hrmIncompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a compatible heart rate sensor (no Heart Rate service)'**
+  String get hrmIncompatible;
+
+  /// No description provided for @hrmConnectError.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection error: {error}'**
+  String hrmConnectError(String error);
+
+  /// No description provided for @hrmBpm.
+  ///
+  /// In en, this message translates to:
+  /// **'bpm'**
+  String get hrmBpm;
+
   /// No description provided for @workoutTitle.
   ///
   /// In en, this message translates to:
@@ -463,6 +559,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'kcal'**
   String get historyStatCalories;
+
+  /// No description provided for @historyStatHeartRate.
+  ///
+  /// In en, this message translates to:
+  /// **'HR'**
+  String get historyStatHeartRate;
 
   /// No description provided for @sessionNoTelemetry.
   ///

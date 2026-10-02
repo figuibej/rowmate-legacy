@@ -67,6 +67,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceBtEnable => 'Enable Bluetooth';
 
   @override
+  String get hrmTitle => 'Heart rate sensor';
+
+  @override
+  String get hrmNoSensor => 'No sensor';
+
+  @override
+  String get hrmWatchHint =>
+      'A smartwatch needs an app that broadcasts heart rate over Bluetooth (e.g. Heart for Bluetooth on Wear OS).';
+
+  @override
+  String get hrmSearch => 'Search';
+
+  @override
+  String get hrmSearchOther => 'Search another';
+
+  @override
+  String get hrmSearching => 'Searching sensors…';
+
+  @override
+  String hrmConnectingTo(String name) {
+    return 'Connecting to $name…';
+  }
+
+  @override
+  String get hrmConnect => 'Connect';
+
+  @override
+  String get hrmDisconnect => 'Disconnect';
+
+  @override
+  String get hrmForget => 'Forget';
+
+  @override
+  String get hrmReconnecting => 'reconnecting…';
+
+  @override
+  String get hrmNotFound => 'not found';
+
+  @override
+  String get hrmUnknownSensor => 'Unknown sensor';
+
+  @override
+  String get hrmIncompatible =>
+      'Not a compatible heart rate sensor (no Heart Rate service)';
+
+  @override
+  String hrmConnectError(String error) {
+    return 'Connection error: $error';
+  }
+
+  @override
+  String get hrmBpm => 'bpm';
+
+  @override
   String get workoutTitle => 'Workout';
 
   @override
@@ -199,6 +253,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyStatCalories => 'kcal';
+
+  @override
+  String get historyStatHeartRate => 'HR';
 
   @override
   String get sessionNoTelemetry => 'No telemetry data';
