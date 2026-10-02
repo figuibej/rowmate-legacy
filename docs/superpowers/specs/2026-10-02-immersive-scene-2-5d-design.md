@@ -4,7 +4,7 @@
 
 Reemplazar la escena plana de la pantalla inmersiva (`_OutdoorScenePainter` + `_RowingAvatarPainter`) por una escena en perspectiva al estilo "cámara de persecución" de EXR: el paisaje viene hacia el remero a la velocidad real del monitor, el agua refleja el cielo y brilla con el sol, el bote se ve desde atrás con un remero articulado que hace la secuencia real de la palada, y hay cuatro escenarios a elegir. Todo en Flutter puro (CustomPainter + un fragment shader GLSL), sin dependencias nuevas, en Android, iOS, macOS y Windows.
 
-El HUD (tarjetas de métricas, barra de etapas, paneles de series, controles) no cambia.
+El HUD (tarjetas de métricas, barra de etapas, paneles de series, controles) no cambia, salvo la banda de tiempo + distancia, que pasa del centro inferior a la esquina inferior izquierda para no tapar el bote.
 
 ## Decisiones
 
@@ -47,7 +47,7 @@ shaders/water.frag           # Shader GLSL del agua (declarado en pubspec `shade
 
 Sistema de mundo en metros: `x` lateral (0 = eje del bote, positivo a la derecha), `z` distancia hacia adelante desde la cámara, `y` altura sobre el agua.
 
-- Constantes: altura de cámara `camHeight = 2.2`, el remero está en `boatZ = 8.0`, el horizonte en `horizonY = 0.40 * h` (vertical) o `0.42 * h` (horizontal), `focal = size.shortestSide * 1.0`.
+- Constantes: altura de cámara `camHeight = 2.2`, el remero está en `boatZ = 9.5` (con 8.0 la popa quedaba pegada al borde inferior en horizontal), el horizonte en `horizonY = 0.40 * h` (vertical) o `0.42 * h` (horizontal), `focal = size.shortestSide * 1.0`.
 - Proyección de un punto `(x, y, z)` con `z > 0.5`:
   - `screenX = w / 2 + focal * x / z`
   - `screenY = horizonY + focal * (camHeight - y) / z`

@@ -49,7 +49,7 @@ Parsed metrics: **Split /500m · SPM · Watts · Distance · Calories · Heart R
 - 📈 **Session history** — with detailed telemetry and per-step breakdown
 - 🔒 **Screen always-on** during workouts
 - 🔄 **Strava integration** — upload sessions, sync activities, track sync status
-- 🌄 **Immersive workout screen** — outdoor scene with an animated rower and glass metric cards
+- 🌄 **Immersive workout screen** — 2.5D chase-camera scene: GPU water that reflects the sky, an articulated rower doing the real stroke sequence, scenery passing at your real speed, lighting that follows the time of day, and four sceneries to choose from (alpine lake, city river, coast, regatta course)
 - ⏱️ **500 m splits per series** — live 500 m laps in each work step, meters per repetition, and the last 3 repetitions for comparison (collapsible panels), plus the current time
 - 🧪 **Simulator mode** — develop and test the UI without a rowing machine (see [Development without a rower](#development-without-a-rower))
 
