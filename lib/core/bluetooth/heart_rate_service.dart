@@ -8,6 +8,13 @@ import 'reconnect_loop.dart';
 
 enum HrmStatus { scanning, connecting, connected, disconnected }
 
+/// Un intento de conexión fue reemplazado por otra acción (interno).
+class _SupersededException implements Exception {
+  const _SupersededException();
+  @override
+  String toString() => 'Intento de conexión reemplazado';
+}
+
 /// El dispositivo conectó pero no expone el servicio Heart Rate (0x180D).
 class HrmIncompatibleException implements Exception {
   const HrmIncompatibleException();
@@ -55,7 +62,13 @@ class HeartRateService {
   String? _rememberedName;
   bool _isDisconnecting = false;
 
+  /// Generación de conexión: connect(), startScan(), disconnect(), forget() y
+  /// dispose() la incrementan; un `_connectTo` de una generación anterior se
+  /// aborta en su próximo await sin tocar el estado compartido.
+  int _connectGen = 0;
+
   StreamSubscription<List<ScanResult>>? _scanSub;
+  Completer<void>? _scanDone;
   StreamSubscription<List<int>>? _notifySub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
 
@@ -92,10 +105,16 @@ class HeartRateService {
   /// la UI no permite escanear ambos a la vez. Un escaneo iniciado por el
   /// usuario reemplaza a la reconexión automática.
   Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
-    if (!await FlutterBluePlus.isSupported) return;
+    // Antes del primer await: que ningún reintento se cuele en el hueco.
+    _connectGen++;
     _cancelLoops();
+    _abortPendingConnect();
+    if (!await FlutterBluePlus.isSupported) return;
+    _endScanWait(); // un escaneo anterior aún esperando su plazo termina ya
+    final done = Completer<void>();
+    _scanDone = done;
     _setStatus(HrmStatus.scanning);
-    _devicesController.add(const []);
+    if (!_devicesController.isClosed) _devicesController.add(const []);
     final found = <String, ScanResult>{};
     StreamSubscription<List<ScanResult>>? sub;
     try {
@@ -103,35 +122,53 @@ class HeartRateService {
         withServices: [Guid(HeartRateParser.serviceUuid)],
         timeout: timeout,
       );
-      // Suscribirse DESPUÉS de startScan: la librería ya vació la lista cacheada
-      // (que reemite a cada listener nuevo). Antes recibiríamos el escaneo anterior.
-      await _scanSub?.cancel();
-      _scanSub = sub = FlutterBluePlus.scanResults.listen((results) {
-        for (final r in results) {
-          found[r.device.remoteId.str] = r;
-        }
-        if (!_devicesController.isClosed) _devicesController.add(found.values.toList());
-      });
-      await Future.delayed(timeout);
+      if (!done.isCompleted) {
+        // Suscribirse DESPUÉS de startScan: la librería ya vació la lista cacheada
+        // (que reemite a cada listener nuevo). Antes recibiríamos el escaneo anterior.
+        await _scanSub?.cancel();
+        _scanSub = sub = FlutterBluePlus.scanResults.listen(
+          (results) {
+            for (final r in results) {
+              found[r.device.remoteId.str] = r;
+            }
+            if (!_devicesController.isClosed) _devicesController.add(found.values.toList());
+          },
+          // Un fallo nativo detiene el escaneo: terminar ya, sin error de zona.
+          onError: (Object e) {
+            debugPrint('[HRM] Error en el escaneo: $e');
+            if (!done.isCompleted) done.complete();
+          },
+        );
+      }
+      await Future.any([done.future, Future.delayed(timeout)]);
     } catch (e) {
       debugPrint('[HRM] Error escaneando: $e');
       rethrow;
     } finally {
       await sub?.cancel();
       // Si tras un stopScan() se lanzó otro escaneo, ese es el dueño de
-      // _scanSub y del estado: no tocarlos al vencer el plazo de este.
-      if (sub == null || identical(_scanSub, sub)) {
+      // _scanSub, _scanDone y del estado: no tocarlos al terminar este.
+      if (identical(_scanDone, done)) {
         _scanSub = null;
+        _scanDone = null;
         if (_status == HrmStatus.scanning) _setStatus(HrmStatus.disconnected);
       }
     }
   }
 
   Future<void> stopScan() async {
-    await FlutterBluePlus.stopScan();
+    // Solo si el escaneo es nuestro: el activo podría ser el del remo.
+    if (_status == HrmStatus.scanning) await FlutterBluePlus.stopScan();
+    _endScanWait();
     await _scanSub?.cancel();
     _scanSub = null;
     if (_status == HrmStatus.scanning) _setStatus(HrmStatus.disconnected);
+  }
+
+  /// Hace que el `startScan()` en curso deje de esperar su plazo.
+  void _endScanWait() {
+    final done = _scanDone;
+    if (done != null && !done.isCompleted) done.complete();
   }
 
   // ── Conexión ─────────────────────────────────────────────────────────────
@@ -142,9 +179,16 @@ class HeartRateService {
       debugPrint('[HRM] connect ignorado: ya hay una conexión en curso');
       return;
     }
+    _connectGen++;
     _cancelLoops();
     if (FlutterBluePlus.isScanningNow) await FlutterBluePlus.stopScan();
-    await _connectTo(device);
+    _endScanWait();
+    try {
+      await _connectTo(device);
+    } on _SupersededException {
+      // El propio usuario la reemplazó (otro connect, escaneo, desconectar…).
+      debugPrint('[HRM] Conexión manual reemplazada por otra acción');
+    }
   }
 
   /// Al arrancar la app (y desde "Conectar" en la UI): reconectar al sensor
@@ -171,27 +215,40 @@ class HeartRateService {
   }
 
   Future<void> _connectTo(BluetoothDevice device) async {
+    final gen = _connectGen;
+    // Tras cada await: si otra acción tomó el control, abortar sin tocar estado.
+    void ensureCurrent() {
+      if (gen != _connectGen) throw const _SupersededException();
+    }
+
     _isDisconnecting = false;
     _setStatus(HrmStatus.connecting);
     _device = device;
+    StreamSubscription<List<int>>? notifySub;
     try {
       await device.connect(
         license: _fbpLicense,
         autoConnect: false,
         timeout: const Duration(seconds: 15),
       );
+      ensureCurrent();
       final measurement = await _findMeasurement(device);
+      ensureCurrent();
       if (measurement == null) {
         await device.disconnect();
         throw const HrmIncompatibleException();
       }
       await measurement.setNotifyValue(true);
+      ensureCurrent();
       await _notifySub?.cancel();
-      _notifySub = measurement.lastValueStream.listen(_onMeasurement);
+      ensureCurrent();
+      _notifySub = notifySub = measurement.lastValueStream.listen(_onMeasurement);
       await _remember(device);
+      ensureCurrent();
 
       // Registrar el listener DESPUÉS de conectar para no capturar estados residuales.
       await _connSub?.cancel();
+      ensureCurrent();
       _connSub = device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected && !_isDisconnecting) {
           debugPrint('[HRM] Conexión perdida, reintentando cada ${dropRetryInterval.inSeconds}s');
@@ -205,6 +262,22 @@ class HeartRateService {
       _setStatus(HrmStatus.connected);
       debugPrint('[HRM] Conectado a ${connectedDeviceName ?? device.remoteId.str}');
     } catch (e) {
+      // Reemplazado (o falló porque lo cancelamos): otra acción es dueña del
+      // estado; solo soltar lo propio y desconectar en silencio.
+      if (e is _SupersededException || gen != _connectGen) {
+        debugPrint('[HRM] Intento de conexión reemplazado: ${device.remoteId.str}');
+        if (notifySub != null && identical(_notifySub, notifySub)) {
+          notifySub.cancel();
+          _notifySub = null;
+        }
+        // Si el nuevo dueño apunta al mismo sensor, no cortar su intento.
+        final owner = _device;
+        if (identical(owner, device)) _device = null;
+        if (owner == null || identical(owner, device) || owner.remoteId != device.remoteId) {
+          await _quietDisconnect(device);
+        }
+        throw const _SupersededException();
+      }
       debugPrint('[HRM] Error al conectar: $e');
       _cleanupConnection();
       _setStatus(HrmStatus.disconnected);
@@ -242,23 +315,25 @@ class HeartRateService {
   /// Desconexión manual: corta reintentos, desconecta y olvida el sensor
   /// (si no, la reconexión automática lo volvería a enganchar).
   Future<void> disconnect() async {
+    _connectGen++;
     _cancelLoops();
     _isDisconnecting = true;
     final device = _device;
     _cleanupConnection();
-    try {
-      await device?.disconnect();
-    } catch (e) {
-      debugPrint('[HRM] Error al desconectar: $e');
-    }
+    // queue: false salta la cola de FBP: cancela también un connect pendiente
+    // (con la cola esperaría hasta el timeout de 15 s del connect).
+    if (device != null) await _quietDisconnect(device);
     _isDisconnecting = false;
     await forget();
     _setStatus(HrmStatus.disconnected);
   }
 
-  /// Olvida el sensor recordado y corta reintentos, sin tocar una conexión activa.
+  /// Olvida el sensor recordado y corta reintentos, sin tocar una conexión activa
+  /// (un intento de conexión en curso sí se aborta).
   Future<void> forget() async {
+    _connectGen++;
     _cancelLoops();
+    _abortPendingConnect();
     _rememberedId = null;
     _rememberedName = null;
     final prefs = await SharedPreferences.getInstance();
@@ -270,6 +345,24 @@ class HeartRateService {
   void _cancelLoops() {
     _startupLoop.cancel();
     _dropLoop.cancel();
+  }
+
+  /// Si hay un intento de conexión en vuelo (ya reemplazado vía `_connectGen`),
+  /// lo cancela en FBP y deja el estado en `disconnected`.
+  void _abortPendingConnect() {
+    if (_status != HrmStatus.connecting) return;
+    final pending = _device;
+    _device = null;
+    _setStatus(HrmStatus.disconnected);
+    if (pending != null) unawaited(_quietDisconnect(pending));
+  }
+
+  Future<void> _quietDisconnect(BluetoothDevice device) async {
+    try {
+      await device.disconnect(queue: false);
+    } catch (e) {
+      debugPrint('[HRM] Error al desconectar: $e');
+    }
   }
 
   void _cleanupConnection() {
@@ -312,7 +405,10 @@ class HeartRateService {
   }
 
   void dispose() {
+    _connectGen++;
     _cancelLoops();
+    _abortPendingConnect();
+    _endScanWait();
     _watchdog.stop();
     _scanSub?.cancel();
     _notifySub?.cancel();
