@@ -151,8 +151,11 @@ Las excepciones de `discoverServices` / `setNotifyValue` se capturan, se registr
 - **Al arrancar** (`autoConnect()`, llamado desde `main.dart`): si hay sensor recordado,
   `BluetoothDevice.fromId(id).connect(...)` directo, sin escanear. En Android se conecta
   por dirección; en iOS por el identificador que el sistema ya conoce del periférico. Si
-  falla, reintenta cada 10 s durante 1 minuto (6 intentos) y después queda en
-  `disconnected` con `isRetrying == false`.
+  falla, reintenta 6 veces con 10 s de espera entre intentos y después queda en
+  `disconnected` con `isRetrying == false`. Como cada intento puede tardar hasta los
+  15 s del timeout de conexión, la cadencia completa puede llevar ~2 minutos. Mientras
+  reintenta (estado `connecting` con `isRetrying`), la tarjeta muestra el estado
+  "recordado · reconectando…" con Olvidar / Buscar otro, no solo el spinner.
 - **Caída estando conectado:** reintenta cada 3 s, indefinidamente, hasta reconectar o
   hasta `disconnect()`/`forget()`.
 - **`disconnect()`** (manual): cancela reintentos, desconecta y borra el sensor recordado.
@@ -270,7 +273,7 @@ No se filtra por UUID anunciado en el cliente, por el mismo motivo que en
   `rowing_simulator_test` sigue igual); además expone el último valor con
   `int get heartRate`. `SimulatedBleService` emite `tick().copyWith(heartRate: 0)`, como
   el monitor real, para que el pulso llegue solo por el pulsómetro simulado.
-- El panel 🛠 de `SimulatorOverlay` suma el botón "Simular desconexión del pulsómetro"
+- El panel 🛠 de `SimulatorOverlay` suma el botón "Simular caída del pulsómetro"
   (sin `Tooltip`, como el resto del panel).
 
 ## Manejo de errores

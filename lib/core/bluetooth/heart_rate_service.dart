@@ -230,13 +230,14 @@ class HeartRateService {
       await device.connect(
         license: _fbpLicense,
         autoConnect: false,
+        mtu: null, // 0x2A37 mide 2-20 bytes: no pedir MTU (algunos relojes lo rechazan)
         timeout: const Duration(seconds: 15),
       );
       ensureCurrent();
       final measurement = await _findMeasurement(device);
       ensureCurrent();
       if (measurement == null) {
-        await device.disconnect();
+        await _quietDisconnect(device);
         throw const HrmIncompatibleException();
       }
       await measurement.setNotifyValue(true);
@@ -280,6 +281,10 @@ class HeartRateService {
         throw const _SupersededException();
       }
       debugPrint('[HRM] Error al conectar: $e');
+      // El enlace puede haber quedado abierto (falló discover/notify/MTU
+      // después de conectar, p. ej. un diálogo de emparejamiento lento):
+      // soltarlo para no dejar un GATT colgado invisible para la app.
+      await _quietDisconnect(device);
       _cleanupConnection();
       _setStatus(HrmStatus.disconnected);
       rethrow;

@@ -70,6 +70,12 @@ class HeartRateCard extends StatelessWidget {
       case HrmStatus.connected:
         return _connected(hr, l10n);
       case HrmStatus.connecting:
+        // Reintento automático (cada intento tarda hasta 15 s): mostrar el
+        // estado "recordado · reconectando..." con Olvidar / Buscar otro, para
+        // no dejar al usuario sin controles durante la reconexión.
+        if (hr.isRetrying && hr.hasRemembered) {
+          return _remembered(hr, l10n, rowerBusy);
+        }
         return Row(
           children: [
             const SizedBox(
