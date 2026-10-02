@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -18,10 +19,39 @@ typedef _Services = ({
   SimulatedHeartRateService hrm,
 });
 
-Future<_Services> _pump(WidgetTester tester) async {
+/// Remo falso cuyo estado controla el test: el simulador real nunca pasa por
+/// `scanning` (su `startScan()` reconecta al instante). Al sustituir
+/// `statusStream` tampoco se auto-conecta, así que arranca en la vista de escaneo.
+class _ControllableBleService extends SimulatedBleService {
+  _ControllableBleService(RowingSimulator sim) : super(simulator: sim);
+
+  // sync: el evento llega al provider en el mismo `emit` y el siguiente
+  // pump ya lo pinta (si no, llega en un microtask tras ese frame).
+  final statusController = StreamController<BleStatus>.broadcast(sync: true);
+  BleStatus _fakeStatus = BleStatus.disconnected;
+
+  @override
+  Stream<BleStatus> get statusStream => statusController.stream;
+  @override
+  BleStatus get status => _fakeStatus;
+
+  void emit(BleStatus s) {
+    _fakeStatus = s;
+    statusController.add(s);
+  }
+
+  @override
+  void dispose() {
+    statusController.close();
+    super.dispose();
+  }
+}
+
+Future<_Services> _pump(WidgetTester tester,
+    {SimulatedBleService Function(RowingSimulator)? bleFactory}) async {
   SharedPreferences.setMockInitialValues({});
   final sim = RowingSimulator(noise: false);
-  final ble = SimulatedBleService(simulator: sim);
+  final ble = bleFactory?.call(sim) ?? SimulatedBleService(simulator: sim);
   final hrm = SimulatedHeartRateService(sim);
   await tester.pumpWidget(
     MultiProvider(
@@ -105,6 +135,47 @@ void main() {
     await s.hrm.stopScan();
     await tester.pump();
     expect(tester.widget<FilledButton>(rowerSearch).onPressed, isNotNull);
+
+    await _teardown(tester, s);
+  });
+
+  testWidgets('en landscape la vista de escaneo no desborda', (tester) async {
+    tester.view.physicalSize = const Size(640, 360);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final s = await _pump(tester);
+    await s.ble.disconnect(); // vista de escaneo del remo + tarjeta
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    // El botón queda bajo el borde visible del scroll de la tarjeta.
+    await tester.ensureVisible(find.byKey(const Key('hrm-search')));
+    await tester.tap(find.byKey(const Key('hrm-search')));
+    await tester.pump();
+    expect(s.hrm.status, HrmStatus.scanning);
+    // La lista queda dentro del scroll propio de la tarjeta, fuera de la vista.
+    expect(find.text('Pulsómetro simulado', skipOffstage: false), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'la lista de sensores tampoco desborda');
+    await _teardown(tester, s);
+  });
+
+  testWidgets('mientras el remo escanea no se puede buscar pulsómetro', (tester) async {
+    late _ControllableBleService ble;
+    final s = await _pump(tester,
+        bleFactory: (sim) => ble = _ControllableBleService(sim));
+    final hrmSearch = find.byKey(const Key('hrm-search'));
+    expect(tester.widget<FilledButton>(hrmSearch).onPressed, isNotNull);
+
+    ble.emit(BleStatus.scanning);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(hrmSearch).onPressed, isNull);
+
+    ble.emit(BleStatus.connecting);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(hrmSearch).onPressed, isNull);
+
+    ble.emit(BleStatus.disconnected);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(hrmSearch).onPressed, isNotNull);
 
     await _teardown(tester, s);
   });

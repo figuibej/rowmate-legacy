@@ -418,21 +418,25 @@ class _ScanView extends StatelessWidget {
 
             if (p.scanResults.isEmpty && !isScanning)
               Expanded(
+                // Comparte el alto con la tarjeta del pulsómetro: en landscape
+                // no entra entero, así que se desplaza en vez de desbordar.
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.bluetooth_disabled, size: 48, color: Colors.white24),
-                      const SizedBox(height: 12),
-                      Text(l10n.deviceNoResults,
-                          style: const TextStyle(color: Colors.white54)),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.deviceNoResultsHint,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                      ),
-                    ],
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.bluetooth_disabled, size: 48, color: Colors.white24),
+                        const SizedBox(height: 12),
+                        Text(l10n.deviceNoResults,
+                            style: const TextStyle(color: Colors.white54)),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.deviceNoResultsHint,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white38, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -466,7 +470,8 @@ class _ScanView extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 12),
-            const HeartRateCard(),
+            // Altura acotada con scroll propio: en landscape el Column no entra.
+            const Flexible(child: SingleChildScrollView(child: HeartRateCard())),
           ],
         ],
       ),

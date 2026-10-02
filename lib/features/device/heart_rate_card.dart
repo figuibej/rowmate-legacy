@@ -55,6 +55,8 @@ class HeartRateCard extends StatelessWidget {
               HeartRateProvider.isIncompatible(hr.error!)
                   ? l10n.hrmIncompatible
                   : l10n.hrmConnectError('${hr.error}'),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
           ],
@@ -148,22 +150,30 @@ class HeartRateCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(hr.connectedDeviceName ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 14, color: Colors.white70)),
               const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(hr.bpm > 0 ? '${hr.bpm}' : '--',
-                      style: const TextStyle(
-                          fontSize: 52,
-                          fontWeight: FontWeight.w800,
-                          color: _color,
-                          height: 1)),
-                  const SizedBox(width: 6),
-                  Text(l10n.hrmBpm,
-                      style: TextStyle(fontSize: 14, color: _color.withValues(alpha: 0.7))),
-                ],
+              // Con texto grande el número se encoge en vez de desbordar.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(hr.bpm > 0 ? '${hr.bpm}' : '--',
+                        style: const TextStyle(
+                            fontSize: 52,
+                            fontWeight: FontWeight.w800,
+                            color: _color,
+                            height: 1)),
+                    const SizedBox(width: 6),
+                    Text(l10n.hrmBpm,
+                        style: TextStyle(
+                            fontSize: 14, color: _color.withValues(alpha: 0.7))),
+                  ],
+                ),
               ),
             ],
           ),
