@@ -5,16 +5,22 @@ import 'package:rowmate/core/bluetooth/ble_service.dart';
 import 'package:rowmate/core/bluetooth/simulated_ble_service.dart';
 import 'package:rowmate/core/dev/rowing_simulator.dart';
 import 'package:rowmate/core/dev/simulator_overlay.dart';
+import 'package:rowmate/features/workout/scene/scene_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   _shortWindowTest();
 
   testWidgets('el panel se abre fuera del Navigator y + sube los watts',
       (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final ble = SimulatedBleService(simulator: RowingSimulator(noise: false));
     await tester.pumpWidget(
-      Provider<BleService>.value(
-        value: ble,
+      MultiProvider(
+        providers: [
+          Provider<BleService>.value(value: ble),
+          ChangeNotifierProvider(create: (_) => SceneSettings()),
+        ],
         child: MaterialApp(
           // Igual que en main.dart: por encima del Navigator.
           builder: (context, child) => SimulatorOverlay(child: child!),
@@ -39,6 +45,10 @@ void main() {
     await tester.tap(find.byKey(const Key('sim-spm-plus')));
     await tester.pump();
     expect(ble.simulator.targetSpm, 25);
+
+    await tester.tap(find.byKey(const Key('sim-hour-plus')));
+    await tester.pump();
+    expect(find.text('Hora real'), findsOneWidget);
 
     await tester.tap(find.text('Simular desconexión'));
     await tester.pump();
@@ -68,10 +78,14 @@ void _shortWindowTest() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    SharedPreferences.setMockInitialValues({});
     final ble = SimulatedBleService(simulator: RowingSimulator(noise: false));
     await tester.pumpWidget(
-      Provider<BleService>.value(
-        value: ble,
+      MultiProvider(
+        providers: [
+          Provider<BleService>.value(value: ble),
+          ChangeNotifierProvider(create: (_) => SceneSettings()),
+        ],
         child: MaterialApp(
           builder: (context, child) => SimulatorOverlay(child: child!),
           home: const Scaffold(body: Text('home')),

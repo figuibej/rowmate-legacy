@@ -23,6 +23,7 @@ import 'features/profile/profile_provider.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/routines/routines_provider.dart';
 import 'features/routines/routines_screen.dart';
+import 'features/workout/scene/scene_settings.dart';
 import 'features/workout/workout_provider.dart';
 import 'features/workout/workout_screen.dart';
 import 'shared/theme.dart';
@@ -61,6 +62,7 @@ class RowerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WorkoutProvider(ble, db)),
         ChangeNotifierProvider(create: (_) => RoutinesProvider(db)),
         ChangeNotifierProvider(create: (_) => HistoryProvider(db)),
+        ChangeNotifierProvider(create: (_) => SceneSettings()),
         if (stravaConfigured)
           ChangeNotifierProvider(create: (_) {
             final stravaAuth = StravaAuthService();

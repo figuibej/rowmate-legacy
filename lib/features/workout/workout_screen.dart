@@ -13,6 +13,7 @@ import '../profile/profile_provider.dart';
 import '../routines/routines_provider.dart';
 import 'workout_provider.dart';
 import 'immersive_workout_screen.dart';
+import 'scene/environment_picker.dart';
 
 class WorkoutScreen extends StatelessWidget {
   const WorkoutScreen({super.key});
@@ -69,6 +70,12 @@ class _IdleView extends StatelessWidget {
                   ],
                 ),
               ),
+
+            Text(l10n.workoutScene,
+                style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            const SizedBox(height: 8),
+            const EnvironmentPicker(),
+            const SizedBox(height: 16),
 
             FilledButton.icon(
               onPressed: connected
