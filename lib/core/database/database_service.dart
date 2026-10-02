@@ -295,6 +295,7 @@ class DatabaseService {
       columns: [
         'session_id', 'power_watts', 'stroke_rate',
         'pace_500m_seconds', 'distance_meters', 'elapsed_seconds', 'calories',
+        'heart_rate',
       ],
       where: 'session_id IN ($placeholders)',
       whereArgs: sessionIds,
@@ -311,6 +312,7 @@ class DatabaseService {
         pace500mSeconds: row['pace_500m_seconds'] as int,
         powerWatts: row['power_watts'] as int,
         calories: row['calories'] as int,
+        heartRate: row['heart_rate'] as int? ?? 0,
       ));
     }
 

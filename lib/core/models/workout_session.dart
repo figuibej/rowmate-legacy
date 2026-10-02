@@ -75,6 +75,8 @@ class SessionStats {
   final int totalDistance;
   final int totalTimeSeconds;
   final int totalCalories;
+  final int avgHeartRate; // bpm, media de los puntos con pulso > 0 (0 si no hubo)
+  final int maxHeartRate; // bpm (0 si no hubo)
 
   const SessionStats({
     this.p99Watts = 0,
@@ -83,7 +85,11 @@ class SessionStats {
     this.totalDistance = 0,
     this.totalTimeSeconds = 0,
     this.totalCalories = 0,
+    this.avgHeartRate = 0,
+    this.maxHeartRate = 0,
   });
+
+  bool get hasHeartRate => maxHeartRate > 0;
 
   String get splitFormatted {
     if (p99SplitSeconds <= 0) return '--:--';
@@ -115,6 +121,7 @@ class SessionStats {
     final watts = points.map((p) => p.powerWatts).where((v) => v > 0).toList();
     final spms = points.map((p) => p.strokeRate).where((v) => v > 0).toList();
     final splits = points.map((p) => p.pace500mSeconds).where((v) => v > 0).toList();
+    final hrs = points.map((p) => p.heartRate).where((v) => v > 0).toList();
 
     return SessionStats(
       p99Watts: _percentile99(watts).round(),
@@ -123,6 +130,8 @@ class SessionStats {
       totalDistance: points.map((p) => p.distanceMeters).reduce((a, b) => a > b ? a : b),
       totalTimeSeconds: points.map((p) => p.elapsedSeconds).reduce((a, b) => a > b ? a : b),
       totalCalories: points.map((p) => p.calories).reduce((a, b) => a > b ? a : b),
+      avgHeartRate: hrs.isEmpty ? 0 : (hrs.reduce((a, b) => a + b) / hrs.length).round(),
+      maxHeartRate: hrs.isEmpty ? 0 : hrs.reduce((a, b) => a > b ? a : b),
     );
   }
 }
