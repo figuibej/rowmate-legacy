@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../core/bluetooth/ble_service.dart';
+import '../../core/bluetooth/heart_rate_service.dart';
 import '../../core/database/database_service.dart';
 import '../../core/models/rowing_data.dart';
 import '../../core/models/routine.dart';
@@ -41,6 +42,7 @@ class StepProgress {
 
 class WorkoutProvider extends ChangeNotifier {
   final BleService _ble;
+  final HeartRateService _hrm;
   final DatabaseService _db;
 
   WorkoutPhase _phase = WorkoutPhase.idle;
@@ -57,6 +59,12 @@ class WorkoutProvider extends ChangeNotifier {
 
   Timer? _timer;
   StreamSubscription<RowingData>? _dataSub;
+  StreamSubscription<int>? _hrmBpmSub;
+  StreamSubscription<HrmStatus>? _hrmStatusSub;
+
+  /// Último bpm del pulsómetro. null = sensor no conectado (se respeta el FTMS);
+  /// 0 = conectado pero sin lectura válida.
+  int? _hrmBpm;
 
   // Datos acumulados para guardar la sesión
   int? _sessionId;
@@ -68,8 +76,10 @@ class WorkoutProvider extends ChangeNotifier {
   int? _lastFinishedSessionId;
   int? get lastFinishedSessionId => _lastFinishedSessionId;
 
-  WorkoutProvider(this._ble, this._db) {
+  WorkoutProvider(this._ble, this._hrm, this._db) {
     _dataSub = _ble.dataStream.listen(_onData);
+    _hrmBpmSub = _hrm.bpmStream.listen(_onHrmBpm);
+    _hrmStatusSub = _hrm.statusStream.listen(_onHrmStatus);
   }
 
   WorkoutPhase get phase => _phase;
@@ -201,7 +211,21 @@ class WorkoutProvider extends ChangeNotifier {
   }
 
   void _onData(RowingData d) {
-    _data = d;
+    // El pulsómetro manda sobre el pulso que (rara vez) manda el monitor por FTMS.
+    _data = d.copyWith(heartRate: _hrmBpm ?? d.heartRate);
+    notifyListeners();
+  }
+
+  void _onHrmBpm(int bpm) {
+    _hrmBpm = bpm;
+    _data = _data.copyWith(heartRate: bpm);
+    notifyListeners();
+  }
+
+  void _onHrmStatus(HrmStatus s) {
+    if (s == HrmStatus.connected || _hrmBpm == null) return;
+    _hrmBpm = null;
+    _data = _data.copyWith(heartRate: 0);
     notifyListeners();
   }
 
@@ -289,6 +313,8 @@ class WorkoutProvider extends ChangeNotifier {
   void dispose() {
     _timer?.cancel();
     _dataSub?.cancel();
+    _hrmBpmSub?.cancel();
+    _hrmStatusSub?.cancel();
     super.dispose();
   }
 }

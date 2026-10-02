@@ -9,6 +9,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'core/bluetooth/ble_service.dart';
 import 'core/bluetooth/simulated_ble_service.dart';
+import 'core/bluetooth/heart_rate_service.dart';
+import 'core/bluetooth/simulated_heart_rate_service.dart';
 import 'core/database/database_service.dart';
 import 'core/dev/dev_config.dart';
 import 'core/dev/simulator_overlay.dart';
@@ -45,6 +47,9 @@ class RowerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final BleService ble = kSimulator ? SimulatedBleService() : BleService();
+    final HeartRateService hrm = kSimulator
+        ? SimulatedHeartRateService((ble as SimulatedBleService).simulator)
+        : HeartRateService();
     final db = DatabaseService();
     final stravaConfigured = StravaConfig.isConfigured;
 
@@ -59,7 +64,7 @@ class RowerApp extends StatelessWidget {
           dispose: (_, s) => s.close(),
         ),
         ChangeNotifierProvider(create: (_) => DeviceProvider(ble)),
-        ChangeNotifierProvider(create: (_) => WorkoutProvider(ble, db)),
+        ChangeNotifierProvider(create: (_) => WorkoutProvider(ble, hrm, db)),
         ChangeNotifierProvider(create: (_) => RoutinesProvider(db)),
         ChangeNotifierProvider(create: (_) => HistoryProvider(db)),
         ChangeNotifierProvider(create: (_) => SceneSettings()),
