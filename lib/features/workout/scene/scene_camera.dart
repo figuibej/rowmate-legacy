@@ -11,8 +11,9 @@ class SceneCamera {
   /// Altura de la cámara sobre el agua (m).
   static const double camHeight = 2.2;
 
-  /// Distancia de la cámara al remero (m).
-  static const double boatZ = 8.0;
+  /// Distancia de la cámara al remero (m). Con 9.5 la popa (4.2 m más cerca)
+  /// queda visible por encima del borde inferior en horizontal.
+  static const double boatZ = 9.5;
 
   /// Nada más cerca que esto se dibuja.
   static const double minZ = 0.5;

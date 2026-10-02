@@ -80,24 +80,27 @@ class SkyPainter extends CustomPainter {
           palette.sunGlow.withValues(alpha: 0.0),
         ]).createShader(Rect.fromCircle(center: pos, radius: r * 4)),
     );
-    canvas.drawCircle(pos, r, Paint()..color = palette.sunColor);
-    if (light.isMoon) {
-      // Luna en cuarto: un disco del color del cielo tapa parte del astro
-      canvas.drawCircle(pos.translate(r * 0.4, -r * 0.15), r * 0.92, Paint()..color = palette.skyTop);
-    }
+    // Luna: disco pálido algo más chico; sol: disco pleno
+    canvas.drawCircle(pos, light.isMoon ? r * 0.8 : r, Paint()..color = palette.sunColor);
   }
 
   void _clouds(Canvas canvas, double w, double hz) {
-    final body = Paint()..color = Colors.white.withValues(alpha: 0.15 + 0.55 * palette.ambient);
-    final shade = Paint()..color = palette.skyTop.withValues(alpha: 0.18);
+    // Nubes suaves: bordes difuminados y casi invisibles de noche
+    final alpha = 0.08 + 0.5 * palette.ambient * palette.ambient;
+    final body = Paint()
+      ..color = Color.lerp(Colors.white, palette.skyHorizon, 0.25)!.withValues(alpha: alpha)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    final shade = Paint()
+      ..color = palette.skyTop.withValues(alpha: 0.12 * palette.ambient)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     for (final (fx, fy, s, speed) in _cloudData) {
       final x = ((fx + distance * 0.0004 * speed + time * 0.004 * speed) % 1.2) * w - w * 0.1;
-      final y = hz * fy;
-      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.25), width: s * 2.6, height: s * 0.9), body);
-      canvas.drawCircle(Offset(x - s * 0.6, y), s * 0.6, body);
-      canvas.drawCircle(Offset(x, y - s * 0.2), s * 0.8, body);
-      canvas.drawCircle(Offset(x + s * 0.7, y + s * 0.05), s * 0.55, body);
-      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.5), width: s * 2.2, height: s * 0.4), shade);
+      final y = hz * (0.12 + fy * 0.6);
+      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.25), width: s * 2.6, height: s * 0.8), body);
+      canvas.drawCircle(Offset(x - s * 0.6, y), s * 0.5, body);
+      canvas.drawCircle(Offset(x, y - s * 0.15), s * 0.65, body);
+      canvas.drawCircle(Offset(x + s * 0.7, y + s * 0.05), s * 0.45, body);
+      canvas.drawOval(Rect.fromCenter(center: Offset(x, y + s * 0.5), width: s * 2.0, height: s * 0.3), shade);
     }
   }
 

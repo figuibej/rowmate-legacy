@@ -40,11 +40,16 @@ float vnoise(vec2 p) {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-float waveH(float x, float zw) {
+// Dos octavas de ruido cuya frecuencia crece cerca de la cámara (z chico),
+// así el agua cercana tiene detalle fino en vez de bloques gigantes.
+float waveH(float x, float zw, float z) {
   float s = uWaveScale;
+  float d = clamp(6.0 / z, 1.0, 6.0);
+  float n = (vnoise(vec2(x, zw) * (0.8 * d) + uTime * 0.15) - 0.5) * 0.6
+          + (vnoise(vec2(x, zw) * (2.6 * d) - uTime * 0.25) - 0.5) * 0.3;
   return sin(zw / s + uTime * 0.6) * 0.6
        + sin((zw * 0.7 + x * 1.3) / s + uTime * 0.9) * 0.4
-       + (vnoise(vec2(x, zw) * 0.8 + uTime * 0.15) - 0.5) * 0.8;
+       + n;
 }
 
 void main() {
@@ -57,10 +62,10 @@ void main() {
   float x = (px.x - uSize.x * 0.5) * z / uFocal;
   float zw = z + uDistance;
 
-  float h = waveH(x, zw);
+  float h = waveH(x, zw, z);
   float e = 0.15;
-  float nx = (waveH(x + e, zw) - h) / e;
-  float nz = (waveH(x, zw + e) - h) / e;
+  float nx = (waveH(x + e, zw, z) - h) / e;
+  float nz = (waveH(x, zw + e, z) - h) / e;
 
   vec3 col = mix(uWaterNear, uWaterFar, smoothstep(2.0, 120.0, z));
   col *= 1.0 + h * uWaveAmp * 0.25;
@@ -74,8 +79,9 @@ void main() {
   float dxs = (px.x - uSunX) / colW;
   float column = exp(-dxs * dxs);
   float crest = smoothstep(0.3, 0.9, h * 0.5 + 0.5 - abs(nx + nz) * 0.1);
-  float sparkle = 0.3 + 0.7 * hash(floor(vec2(x * 4.0, zw * 4.0)));
-  float glitter = column * crest * sparkle * uLight;
+  // Destellos suaves (sin celdas visibles), más finos cerca de la cámara
+  float sparkle = smoothstep(0.45, 0.95, vnoise(vec2(x, zw) * (3.0 + 12.0 / z) + uTime * 0.8));
+  float glitter = column * crest * (0.25 + 0.75 * sparkle) * uLight;
   col += uSunColor * glitter * 0.9;
 
   // Estela: dos líneas de espuma en V y turbulencia en el centro
