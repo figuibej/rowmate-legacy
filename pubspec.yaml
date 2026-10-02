@@ -56,5 +56,7 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   generate: true
+  shaders:
+    - shaders/water.frag
   assets:
     - assets/icon/
