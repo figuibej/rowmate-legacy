@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'ftms_parser.dart';
+import 'scan_filter.dart';
 import '../models/rowing_data.dart';
 
 enum BleStatus { off, scanning, connecting, connected, disconnected }
@@ -97,9 +98,12 @@ class BleService {
       // (que reemite a cada listener nuevo). Antes recibiríamos resultados del
       // escaneo anterior, por ejemplo el del pulsómetro.
       await _scanSub?.cancel();
+      final ftms = Guid(FtmsParser.ftmsServiceUuid);
       _scanSub = sub = FlutterBluePlus.scanResults.listen(
         (results) {
           for (final r in results) {
+            // En Windows/Linux el plugin ignora withServices: filtrar acá.
+            if (!acceptScanResult(r, ftms)) continue;
             found[r.device.remoteId.str] = r;
           }
           _devicesController.add(found.values.toList());

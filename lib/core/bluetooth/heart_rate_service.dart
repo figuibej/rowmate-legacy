@@ -5,6 +5,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'heart_rate_parser.dart';
 import 'reconnect_loop.dart';
+import 'scan_filter.dart';
 
 enum HrmStatus { scanning, connecting, connected, disconnected }
 
@@ -127,12 +128,15 @@ class HeartRateService {
         // (que reemite a cada listener nuevo). Antes recibiríamos el escaneo anterior.
         await _scanSub?.cancel();
         debugPrint('[HRM] Escaneando sensores 0x180D durante ${timeout.inSeconds}s');
+        final hrs = Guid(HeartRateParser.serviceUuid);
         _scanSub = sub = FlutterBluePlus.scanResults.listen(
           (results) {
             for (final r in results) {
+              // En Windows/Linux el plugin ignora withServices: filtrar acá.
+              if (!acceptScanResult(r, hrs)) continue;
               final id = r.device.remoteId.str;
               if (!found.containsKey(id)) {
-                // Diagnóstico: qué anuncia cada sensor que pasa el filtro del sistema.
+                // Diagnóstico: qué anuncia cada sensor que pasa el filtro.
                 debugPrint('[HRM] Encontrado $id "${r.advertisementData.advName}" '
                     'rssi=${r.rssi} uuids=${r.advertisementData.serviceUuids}');
               }
