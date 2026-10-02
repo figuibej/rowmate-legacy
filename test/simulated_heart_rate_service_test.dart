@@ -42,6 +42,7 @@ void main() {
       expect(hrm.bpm, bpm.last);
 
       hrm.dispose();
+      expect(async.pendingTimers, isEmpty);
     });
   });
 
@@ -54,6 +55,7 @@ void main() {
       async.elapse(const Duration(seconds: 1));
       expect(hrm.status, HrmStatus.disconnected);
       hrm.dispose();
+      expect(async.pendingTimers, isEmpty);
     });
   });
 
@@ -71,12 +73,15 @@ void main() {
       hrm.simulateDisconnect();
       async.flushMicrotasks(); // los broadcast controllers entregan en microtask
       expect(hrm.isRetrying, isTrue);
+      expect(hrm.rememberedDeviceName, SimulatedHeartRateService.deviceName,
+          reason: 'mientras reconecta la tarjeta muestra "reconectando…"');
       expect(bpm.last, 0, reason: 'al caer se emite 0');
       async.elapse(const Duration(seconds: 2));
       expect(statuses, [HrmStatus.connected, HrmStatus.disconnected]);
       async.elapse(const Duration(seconds: 1));
       expect(statuses.last, HrmStatus.connected);
       expect(hrm.isRetrying, isFalse);
+      expect(hrm.rememberedDeviceName, isNull);
 
       hrm.disconnect();
       async.elapse(const Duration(seconds: 10));
@@ -84,6 +89,7 @@ void main() {
       expect(hrm.connectedDeviceName, isNull);
 
       hrm.dispose();
+      expect(async.pendingTimers, isEmpty);
     });
   });
 }

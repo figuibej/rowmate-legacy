@@ -41,7 +41,9 @@ class SimulatedHeartRateService implements HeartRateService {
   String? get connectedDeviceName =>
       _status == HrmStatus.connected ? deviceName : null;
   @override
-  String? get rememberedDeviceName => null;
+  /// No se persiste nada; solo mientras reconecta tras una caída simulada se
+  /// expone el nombre, para que la tarjeta muestre el estado "reconectando…".
+  String? get rememberedDeviceName => _reconnectTimer != null ? deviceName : null;
   @override
   bool get isRetrying => _reconnectTimer != null;
 
@@ -62,6 +64,9 @@ class SimulatedHeartRateService implements HeartRateService {
 
   @override
   Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
+    // Un escaneo del usuario reemplaza a la reconexión automática (como el servicio real).
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _scanTimer?.cancel();
     _setStatus(HrmStatus.scanning);
     _devicesController.add([fakeScanResult()]);
@@ -116,6 +121,7 @@ class SimulatedHeartRateService implements HeartRateService {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     if (_status == HrmStatus.connected) return;
+    _dataTimer?.cancel(); // por si un escaneo dejó el timer anterior corriendo
     _setStatus(HrmStatus.connected);
     _dataTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _bpm = simulator.heartRate;
