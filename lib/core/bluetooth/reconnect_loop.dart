@@ -21,37 +21,41 @@ class ReconnectLoop {
   Timer? _timer;
   int _attempts = 0;
   bool _running = false;
-  bool _busy = false;
+
+  /// Generación de la corrida actual. Un intento en vuelo de una corrida
+  /// anterior (cancelada o reiniciada con [start]) descarta su resultado.
+  int _generation = 0;
 
   bool get isRunning => _running;
   int get attempts => _attempts;
 
+  /// Arranca (o reinicia desde cero) la cadencia. El primer intento es inmediato.
   void start() {
     cancel();
     _running = true;
     _attempts = 0;
-    _tryOnce();
+    _tryOnce(_generation);
   }
 
+  /// Frena los reintentos. Un intento en vuelo no se aborta, pero su
+  /// resultado se descarta.
   void cancel() {
+    _generation++;
     _timer?.cancel();
     _timer = null;
     _running = false;
   }
 
-  Future<void> _tryOnce() async {
-    if (!_running || _busy) return;
-    _busy = true;
+  Future<void> _tryOnce(int generation) async {
+    if (!_running || generation != _generation) return;
     _attempts++;
     var ok = false;
     try {
       ok = await attempt();
     } catch (_) {
       ok = false;
-    } finally {
-      _busy = false;
     }
-    if (!_running) return; // cancelado mientras intentaba
+    if (generation != _generation || !_running) return; // corrida vieja o cancelada
     if (ok) {
       _running = false;
       return;
@@ -62,7 +66,7 @@ class ReconnectLoop {
       onGiveUp?.call();
       return;
     }
-    _timer = Timer(interval, _tryOnce);
+    _timer = Timer(interval, () => _tryOnce(generation));
   }
 }
 

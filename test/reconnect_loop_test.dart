@@ -1,4 +1,5 @@
 // test/reconnect_loop_test.dart
+import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rowmate/core/bluetooth/reconnect_loop.dart';
@@ -68,6 +69,86 @@ void main() {
         expect(loop.isRunning, isFalse);
         async.elapse(const Duration(seconds: 10));
         expect(calls, 3);
+      });
+    });
+
+    test('start() durante un intento en vuelo descarta ese resultado y arranca de cero', () {
+      fakeAsync((async) {
+        final completers = <Completer<bool>>[];
+        final loop = ReconnectLoop(
+          interval: const Duration(seconds: 3),
+          attempt: () {
+            final c = Completer<bool>();
+            completers.add(c);
+            return c.future;
+          },
+        );
+        loop.start();
+        expect(completers, hasLength(1));
+
+        loop.start(); // reinicio mientras el primer intento sigue en vuelo
+        expect(completers, hasLength(2), reason: 'la nueva corrida intenta de inmediato');
+        expect(loop.attempts, 1);
+
+        completers[0].complete(true); // éxito tardío de la corrida vieja
+        async.flushMicrotasks();
+        expect(loop.isRunning, isTrue, reason: 'el éxito viejo no termina la corrida nueva');
+
+        completers[1].complete(false);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 3));
+        expect(completers, hasLength(3));
+        expect(loop.attempts, 2);
+      });
+    });
+
+    test('cancel() durante un intento en vuelo no programa otro intento', () {
+      fakeAsync((async) {
+        final completers = <Completer<bool>>[];
+        final loop = ReconnectLoop(
+          interval: const Duration(seconds: 1),
+          attempt: () {
+            final c = Completer<bool>();
+            completers.add(c);
+            return c.future;
+          },
+        );
+        loop.start();
+        loop.cancel();
+        completers.single.complete(false);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 10));
+        expect(completers, hasLength(1));
+        expect(loop.isRunning, isFalse);
+      });
+    });
+
+    test('start() desde onGiveUp arranca una corrida nueva', () {
+      fakeAsync((async) {
+        var calls = 0;
+        var giveUps = 0;
+        late final ReconnectLoop loop;
+        loop = ReconnectLoop(
+          interval: const Duration(seconds: 1),
+          maxAttempts: 2,
+          attempt: () async {
+            calls++;
+            return false;
+          },
+          onGiveUp: () {
+            if (++giveUps == 1) loop.start();
+          },
+        );
+        loop.start();
+        async.elapse(const Duration(seconds: 1)); // 2 fallos → give up → start → intento 3 inmediato
+        expect(giveUps, 1);
+        expect(calls, 3);
+        expect(loop.isRunning, isTrue);
+
+        async.elapse(const Duration(seconds: 1));
+        expect(calls, 4);
+        expect(giveUps, 2);
+        expect(loop.isRunning, isFalse);
       });
     });
   });
