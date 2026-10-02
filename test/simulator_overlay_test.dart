@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:rowmate/core/bluetooth/ble_service.dart';
@@ -58,9 +59,14 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
 
+    // Con el pulsómetro simulado conectado, el botón lo tira y programa la vuelta.
+    await hrm.connect(BluetoothDevice.fromId(SimulatedHeartRateService.deviceId));
+    expect(hrm.status, HrmStatus.connected);
     await tester.tap(find.text('Simular caída del pulsómetro'));
     await tester.pump();
     expect(tester.takeException(), isNull);
+    expect(hrm.status, HrmStatus.disconnected);
+    expect(hrm.isRetrying, isTrue);
 
     await tester.tap(find.text('Fuerte'));
     await tester.pump();

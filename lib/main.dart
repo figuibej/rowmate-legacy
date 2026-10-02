@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -65,8 +66,13 @@ class RowerApp extends StatelessWidget {
           dispose: (_, s) => s.close(),
         ),
         Provider<HeartRateService>(
+          // lazy: false → create corre al arrancar aunque nadie lea el servicio
+          // del árbol (los providers lo reciben por closure).
+          lazy: false,
           create: (_) {
-            hrm.autoConnect(); // reconecta al sensor recordado, si lo hay
+            // Reconecta al sensor recordado, si lo hay.
+            unawaited(hrm.autoConnect().catchError(
+                (Object e) => debugPrint('[HRM] autoConnect: $e')));
             return hrm;
           },
           dispose: (_, s) => s.dispose(),

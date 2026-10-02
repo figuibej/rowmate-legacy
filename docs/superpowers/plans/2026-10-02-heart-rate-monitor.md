@@ -2225,8 +2225,13 @@ En la lista de `providers`, después del `Provider<DatabaseService>`:
 
 ```dart
         Provider<HeartRateService>(
+          // lazy: false → create corre al arrancar aunque nadie lea el servicio
+          // del árbol (los providers lo reciben por closure). Sin esto,
+          // autoConnect() nunca se ejecutaría en producción.
+          lazy: false,
           create: (_) {
-            hrm.autoConnect(); // reconecta al sensor recordado, si lo hay
+            unawaited(hrm.autoConnect().catchError(
+                (Object e) => debugPrint('[HRM] autoConnect: $e')));
             return hrm;
           },
           dispose: (_, s) => s.dispose(),
