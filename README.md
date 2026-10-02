@@ -91,6 +91,7 @@ To check whether the watch is actually broadcasting, use **nRF Connect** on the 
 <img src="docs/image-03.png" />
 <img src="docs/image-04.png" />
 <img src="docs/image-05.png" />
+<img src="docs/image-06.png" />
 
 
 ---
