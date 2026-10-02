@@ -23,11 +23,12 @@ class RiverEnvironment extends Environment {
       var z = z0 + rnd.nextDouble() * 8;
       while (z < z0 + 50) {
         final boathouse = rnd.nextDouble() < 0.3;
+        // Un poco retirados de la orilla: al pasar no tapan media pantalla
         out.add(ShoreProp(
-          x: side * (Environment.bankX + 2 + rnd.nextDouble() * 3),
+          x: side * (Environment.bankX + 4 + rnd.nextDouble() * 4),
           z: z,
           kind: boathouse ? PropKind.boathouse : PropKind.building,
-          scale: 0.8 + rnd.nextDouble() * 0.5,
+          scale: 0.6 + rnd.nextDouble() * 0.4,
           seed: rnd.nextInt(1000),
         ));
         z += 15 + rnd.nextDouble() * 15;
