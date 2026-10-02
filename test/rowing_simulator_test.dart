@@ -66,4 +66,11 @@ void main() {
       }
     });
   });
+
+  test('heartRate expone el último pulso calculado por tick()', () {
+    final sim = RowingSimulator(noise: false);
+    final d = sim.tick();
+    expect(sim.heartRate, d.heartRate);
+    expect(sim.heartRate, greaterThan(70));
+  });
 }

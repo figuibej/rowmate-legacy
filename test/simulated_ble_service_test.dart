@@ -28,6 +28,8 @@ void main() {
 
       async.elapse(const Duration(seconds: 3));
       expect(data, hasLength(3));
+      expect(data.every((d) => d.heartRate == 0), isTrue,
+          reason: 'el pulso llega solo por el pulsómetro simulado');
       expect(data.last.distanceMeters, greaterThan(data.first.distanceMeters));
 
       ble.dispose();

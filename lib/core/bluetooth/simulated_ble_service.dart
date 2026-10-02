@@ -91,7 +91,8 @@ class SimulatedBleService implements BleService {
     if (_status == BleStatus.connected) return;
     _setStatus(BleStatus.connected);
     _dataTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _dataController.add(simulator.tick());
+      // Como el monitor real: el pulso no viene por FTMS sino por el pulsómetro.
+      _dataController.add(simulator.tick().copyWith(heartRate: 0));
     });
   }
 

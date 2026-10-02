@@ -28,6 +28,9 @@ class RowingSimulator {
   /// false = el remero dejó de remar (spm/watts en 0, totales congelados)
   bool rowing = true;
 
+  /// Último pulso calculado por [tick] (bpm). Lo emite el pulsómetro simulado.
+  int get heartRate => _heartRate.round();
+
   double _distance = 0;
   double _strokes = 0;
   double _calories = 0;
