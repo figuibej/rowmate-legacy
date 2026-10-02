@@ -159,7 +159,13 @@ Las excepciones de `discoverServices` / `setNotifyValue` se capturan, se registr
   Si no se borrara, la reconexión lo volvería a enganchar.
 - **`forget()`**: cancela reintentos y borra el sensor recordado sin tocar la conexión
   (se usa cuando está recordado pero no conectado).
-- **`connect(device)`** manual sobre el sensor recordado reinicia la cadencia de arranque.
+- **`connect(device)`** manual (desde la lista de escaneo) no programa reintentos: si falla,
+  lanza y la tarjeta muestra el error. El botón **Conectar** del estado "recordado" llama a
+  `autoConnect()`, que reinicia la cadencia de arranque.
+- Un intento de conexión en vuelo lleva una "generación": `connect()`, `startScan()`,
+  `disconnect()`, `forget()` y `dispose()` la incrementan, y el intento superado se
+  desconecta en silencio sin tocar el estado compartido (no vuelve a recordar un sensor
+  olvidado ni compite con una conexión manual nueva).
 
 ### Adaptador apagado o sin permiso
 
@@ -275,6 +281,14 @@ No se filtra por UUID anunciado en el cliente, por el mismo motivo que en
 - Excepciones al suscribirse → desconexión interna sin olvidar el sensor → reintentos de
   caída.
 - Escaneo sin resultados → vuelve a "sin sensor" con la pista del smartwatch.
+
+## Limitaciones conocidas
+
+- Algunas apps de broadcast (Wear OS, teléfonos Android como emisor) anuncian con una
+  dirección privada aleatoria que rota. En Android el `remoteId` guardado puede dejar de
+  servir para reconectar por `fromId` si los dispositivos no están emparejados (bonded).
+  Si la reconexión automática falla por eso, la tarjeta queda en "no encontrado" y el
+  usuario vuelve a buscar. Verificar con el reloj real.
 
 ## Fuera de alcance
 
