@@ -35,8 +35,36 @@ RowMate uses the **FTMS (Fitness Machine Service)** protocol — an open Bluetoo
 |---------|------|
 | FTMS Service | `0x1826` |
 | Rower Data (notifications) | `0x2AD2` |
+| Heart Rate Service (sensor) | `0x180D` |
+| Heart Rate Measurement (notifications) | `0x2A37` |
 
 Parsed metrics: **Split /500m · SPM · Watts · Distance · Calories · Heart Rate**
+
+---
+
+## Heart Rate Sensors
+
+RowMate connects to **any Bluetooth sensor that implements the standard Heart Rate Profile** (`0x180D`): chest straps (Polar, Garmin, Wahoo, Coospo…), armbands, and smartwatches running a broadcaster app. The phone keeps two BLE connections at once: the rower and the sensor.
+
+- **Device tab → "Pulsómetro" card → Buscar**, then tap your sensor. The live bpm shows on the card and on the workout screens.
+- The sensor is **remembered**: the app reconnects to it automatically on start and after a drop. **Desconectar** also forgets it.
+- Heart rate is stored with every session, shown as **avg/max** in the history and session detail, charted in the detail screen, and included in Strava uploads.
+
+### Smartwatches (Galaxy Watch, Apple Watch)
+
+Watches don't broadcast heart rate over Bluetooth by default: install a broadcaster app that exposes the standard Heart Rate service.
+
+**Galaxy Watch (Wear OS), tested with a Galaxy Watch 7 and [Heart for Bluetooth](https://play.google.com/store/apps/details?id=lukas.the.coder.heartforbluetooth):**
+
+1. On the watch, grant the app **both** permissions: *Body sensors* **and** *Nearby devices* (Bluetooth). Without *Nearby devices* the app shows your pulse but cannot advertise, so nothing will ever find it.
+2. Open the app and start an **Activity**: it shows your heart rate ("accuracy high"). Keep that screen open and the watch screen on while pairing.
+3. If the sensor still doesn't show up, go to the app's **Connection** tab and tap **Restart Beacon**.
+4. In Galaxy Wearable on the phone, allow the app to run in the background.
+5. In RowMate, tap **Buscar** on the Pulsómetro card. On Windows the watch appears as *Sensor desconocido* with its address (the advertisement carries no name); on Android/iOS it usually shows its name.
+
+To check whether the watch is actually broadcasting, use **nRF Connect** on the phone: *Scanner* tab, filter by Service UUID `180D`. If the list is empty, the watch app isn't advertising and RowMate can't see it either.
+
+> Simulator mode (`--dart-define=SIMULATOR=true`) replaces the sensor with a simulated one too. To test a real sensor, run without the flag.
 
 ---
 
@@ -44,6 +72,7 @@ Parsed metrics: **Split /500m · SPM · Watts · Distance · Calories · Heart R
 
 - 📡 **BLE scan and auto-reconnect** — connects and recovers from drops automatically
 - 📊 **Real-time metrics** — split, SPM, watts, distance, BPM
+- ❤️ **Heart rate sensors** — any standard BLE heart rate sensor (chest straps, or a smartwatch with a broadcaster app); remembered and auto-reconnected, avg/max per session (see [Heart Rate Sensors](#heart-rate-sensors))
 - 🏋️ **Training routines** — configurable intervals by time or distance
 - 🎯 **Targets** — optional watts and SPM goals per step
 - 📈 **Session history** — with detailed telemetry and per-step breakdown
@@ -72,9 +101,14 @@ Parsed metrics: **Split /500m · SPM · Watts · Distance · Calories · Heart R
 lib/
 ├── core/
 │   ├── bluetooth/
-│   │   ├── ble_service.dart       # BLE connection + subscriptions
+│   │   ├── ble_service.dart       # BLE connection + subscriptions (rower)
 │   │   ├── simulated_ble_service.dart # Fake rower for simulator mode
-│   │   └── ftms_parser.dart       # 0x2AD2 characteristic parser
+│   │   ├── ftms_parser.dart       # 0x2AD2 characteristic parser
+│   │   ├── heart_rate_service.dart    # Heart rate sensor (0x180D) client + auto-reconnect
+│   │   ├── heart_rate_parser.dart     # 0x2A37 characteristic parser
+│   │   ├── simulated_heart_rate_service.dart # Fake sensor for simulator mode
+│   │   ├── reconnect_loop.dart        # Retry cadence + stale-reading watchdog
+│   │   └── scan_filter.dart           # Client-side service filter (Windows/Linux)
 │   ├── dev/                       # Simulator mode: flag, physics, control panel
 │   ├── database/
 │   │   └── database_service.dart  # SQLite (sqflite)
@@ -90,7 +124,7 @@ lib/
 │       ├── strava_api_service.dart  # Upload, sync, activity streams
 │       └── tcx_builder.dart        # TCX XML generator for uploads
 ├── features/
-│   ├── device/        # BLE scan + connection
+│   ├── device/        # BLE scan + connection (rower) + heart rate sensor card
 │   ├── workout/       # Live workout with routine tracking
 │   ├── routines/      # Routine CRUD + step editor
 │   ├── history/       # Session history
@@ -143,12 +177,14 @@ flutter run -d windows --dart-define=SIMULATOR=true
 
 In VS Code, pick the **RowMate (simulador)** launch configuration.
 
-- The app starts already connected to "Remo simulado", which sends realistic data every second (split derived from watts with the Concept2 formula, plus distance, strokes, calories and heart rate).
+- The app starts already connected to "Remo simulado", which sends realistic data every second (split derived from watts with the Concept2 formula, plus distance, strokes and calories).
+- The heart rate sensor is simulated too: on the Device tab, **Buscar** on the Pulsómetro card lists a "Pulsómetro simulado" whose bpm follows the simulated effort. Real sensors are not scanned in this mode.
 - An orange **SIMULADOR** banner is shown. The 🛠 button opens a control panel with:
   - intensity presets;
   - ± watts / SPM;
   - a "Remando" (rowing) switch to stop and resume rowing;
-  - a "Simular desconexión" button to test a dropped connection.
+  - a "Simular desconexión" button to test a dropped rower connection;
+  - a "Simular caída del pulsómetro" button to test the sensor's auto-reconnect.
 - Sessions are saved to a separate database (`rower_app_dev.db`), so test data never mixes with your real history.
 - Nothing is ever uploaded to Strava in this mode.
 
@@ -216,6 +252,7 @@ const stravaClientSecret = 'YOUR_SECRET';  // paste your secret here
 - Requires Visual Studio with the **Desktop development with C++** workload
 - Enable **Developer Mode** in Windows settings: Flutter plugins need symlink support
 - Bluetooth via `flutter_blue_plus_winrt`; SQLite via `sqflite_common_ffi`
+- The WinRT plugin ignores scan service filters, so RowMate filters rower and sensor scans by advertised service UUID on Windows. Devices that don't put their name in the advertisement show up as *Sensor desconocido* / *Unknown device* with their address.
 
 ---
 

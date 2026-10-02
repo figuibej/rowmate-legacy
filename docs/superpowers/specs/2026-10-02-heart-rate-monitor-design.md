@@ -287,6 +287,17 @@ No se filtra por UUID anunciado en el cliente, por el mismo motivo que en
 
 ## Limitaciones conocidas
 
+- En Windows (`flutter_blue_plus_winrt`) el plugin ignora `withServices` y entrega todos los
+  dispositivos cercanos. `scan_filter.dart` filtra en el cliente por UUID anunciado solo en
+  Windows/Linux (en iOS/macOS no se filtra: overflow UUIDs). Además el anuncio del reloj no
+  trae nombre, así que en Windows aparece como "Sensor desconocido" + dirección.
+- En modo simulador el pulsómetro también es simulado: un sensor real solo se prueba sin el
+  flag. No hay modo "remo simulado + sensor real".
+- Galaxy Watch 7 + *Heart for Bluetooth* (verificado 2026-10-02): la app necesita el permiso
+  "Dispositivos cercanos" además de "Sensores corporales"; debe tener una Activity en curso
+  con la pantalla encendida; "Connection → Restart Beacon" reinicia el anuncio. La identidad
+  emparejada del reloj no es el sensor. Prueba de referencia: nRF Connect con filtro `180D`.
+
 - Algunas apps de broadcast (Wear OS, teléfonos Android como emisor) anuncian con una
   dirección privada aleatoria que rota. En Android el `remoteId` guardado puede dejar de
   servir para reconectar por `fromId` si los dispositivos no están emparejados (bonded).
