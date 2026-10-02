@@ -84,7 +84,9 @@ class BleService {
 
     _setStatus(BleStatus.scanning);
     final found = <String, ScanResult>{};
-
+    // La suscripción es de ESTE escaneo: si otro arranca antes de que termine
+    // (conexión fallida y "Buscar" de nuevo), el finally no le pisa la suya.
+    StreamSubscription<List<ScanResult>>? sub;
 
     try {
       await FlutterBluePlus.startScan(
@@ -95,26 +97,31 @@ class BleService {
       // (que reemite a cada listener nuevo). Antes recibiríamos resultados del
       // escaneo anterior, por ejemplo el del pulsómetro.
       await _scanSub?.cancel();
-      _scanSub = FlutterBluePlus.scanResults.listen((results) {
-        for (final r in results) {
-          found[r.device.remoteId.str] = r;
-        }
-        _devicesController.add(found.values.toList());
-      });
+      _scanSub = sub = FlutterBluePlus.scanResults.listen(
+        (results) {
+          for (final r in results) {
+            found[r.device.remoteId.str] = r;
+          }
+          _devicesController.add(found.values.toList());
+        },
+        onError: (Object e) => debugPrint('[BLE] Error en el escaneo: $e'),
+      );
       await Future.delayed(timeout);
     } finally {
-      await _scanSub?.cancel();
-      _scanSub = null;
-    }
-    // Solo volver a disconnected si seguimos en scanning.
-    // Si el usuario ya conectó durante el scan, no sobreescribir el estado.
-    if (_status == BleStatus.scanning) {
-      _setStatus(BleStatus.disconnected);
+      await sub?.cancel();
+      if (identical(_scanSub, sub)) {
+        _scanSub = null;
+        // Solo volver a disconnected si seguimos en scanning (también si
+        // startScan lanzó: si no, "Buscar" quedaría deshabilitado para siempre).
+        // Si el usuario ya conectó durante el scan, no sobreescribir el estado.
+        if (_status == BleStatus.scanning) _setStatus(BleStatus.disconnected);
+      }
     }
   }
 
   Future<void> stopScan() async {
-    await FlutterBluePlus.stopScan();
+    // Solo si el escaneo activo es el nuestro (puede ser el del pulsómetro).
+    if (_status == BleStatus.scanning) await FlutterBluePlus.stopScan();
     await _scanSub?.cancel();
     _scanSub = null;
     _setStatus(BleStatus.disconnected);
